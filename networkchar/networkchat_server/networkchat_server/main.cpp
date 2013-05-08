@@ -53,7 +53,7 @@ int main()
 							SOCKET sNew = ::accept( sListen, (SOCKADDR*)&client_addr, &nClientLen);
 							FD_SET(sNew, &fdSocket);
 							printf("接收到新的连接(%s)\n", ::inet_ntoa(client_addr.sin_addr)); 
-							//发送在线用户信息
+							//todp:广播：发送在线用户信息
 							//char szHello[10]={"hello"};
 							//send(sNew, szHello, strlen(szHello), 0);
 						}
@@ -93,5 +93,10 @@ int main()
 	return 0;
 }
 
+
+bool BroadcastAllUser()
+{
+   return false;
+}
 
 
