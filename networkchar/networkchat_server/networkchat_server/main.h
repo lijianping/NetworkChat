@@ -4,15 +4,15 @@
 #pragma comment(lib, "WS2_32")
 using namespace std;
 
-//用户信息结构体（用户名做map的key值，用户信息做value）
-struct USER_INFO
+//锟矫伙拷锟斤拷息锟结构锟藉（锟矫伙拷锟斤拷锟斤拷map锟斤拷key值锟斤拷锟矫伙拷锟斤拷息锟斤拷value锟斤拷
+typedef struct USER_INFO
 {
 	SOCKET user_socket;
-	char user_ip[16];
+	sockaddr_in user_addr;
 }*pUSER_INFO;
 
-//消息结构体
-struct USER_MESSAGE
+//锟斤拷息锟结构锟斤拷
+typedef struct USER_MESSAGE
 {
 	int message_mark;
 	std::string user_name;
