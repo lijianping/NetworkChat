@@ -4,7 +4,10 @@
 static const char *errs[] =
 {
 	"no error",
-	"init socket lib error"     // ≥ı ºªØwinsockø‚ ß∞‹
+	"init socket lib error",     // ≥ı ºªØwinsockø‚ ß∞‹
+	"get local host ip information error",
+	"ip address is null",
+	"connect server failed!"
 };
 Err::Err(int errcode, const char *file, int line)
 {

@@ -5,7 +5,10 @@
 enum NETWORKCHAT_ERR
 {
 	ERR_NOERR = 0,
-	ERR_INIT_SOCKET
+	ERR_INIT_SOCKET,
+	ERR_GET_HOST,
+	ERR_IP_NULL,
+	ERR_CONNECT
 };
 class Err : public std::exception
 {
@@ -24,8 +27,7 @@ public:
         const char *file;
 };
 
-#ifdef _DEBUG
-/** eSign throw*/
+#ifdef DEBUG
 #define LTHROW(err) throw Err(err, (const char*)__LINE__, (int)__FILE__);
 #else
 #define LTHROW(err) throw Err(err);
