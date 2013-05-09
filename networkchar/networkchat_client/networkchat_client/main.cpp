@@ -1,6 +1,9 @@
 #include "resource.h"
 #include "my_socket.h"
+#include <stdio.h>
 #include <Windows.h>
+
+MySocket client;
 
 INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -12,7 +15,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 {
-	static SOCKET communicate;   // client communicate socket
 	static HINSTANCE hInstance;
 	switch (uMsg) 
 	{
@@ -46,17 +48,20 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						return FALSE;
 					}
 					// connect to the server
-					MySocket client;
 					try {
 						client.InitSocketLib();
 						client.ConnectSever(server_ip);
-						client.SendText("hello", strlen("hello"));
+						MessageBox(hwndDlg, "Connect server succeed!", "Hit", MB_ICONINFORMATION);
+						int len = client.SendText("hello", strlen("hello"));
+#ifdef _DEBUG
+						char data[32];
+						sprintf_s(data, "Text len: %d", len);
+						MessageBox(hwndDlg,data, "HIT", MB_ICONINFORMATION);
+#endif
 					} catch (Err &err) {
 						MessageBox(hwndDlg, err.what(), "Error!", MB_ICONINFORMATION);
 						return FALSE;
 					}
-					communicate = client.communicate();    // save the socket and use it at next time
-					MessageBox(hwndDlg, "Connect server succeed!", "Hit", MB_ICONINFORMATION);
 					// set the user name read only
 					SendMessage(GetDlgItem(hwndDlg, IDC_USER_NAME), EM_SETREADONLY, 1, 0);
 					break;
@@ -65,8 +70,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			return TRUE;
 		}
 	case WM_CLOSE:
-		::shutdown(communicate, SD_BOTH);
-		::closesocket(communicate);
+		client.CloseSocket();
 		EndDialog(hwndDlg, 0);
 		return TRUE;
 	}

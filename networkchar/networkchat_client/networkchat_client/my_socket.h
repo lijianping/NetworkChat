@@ -13,10 +13,12 @@ public:
 	void InitSocketLib(BYTE minor_version = 2, BYTE major_version = 2);
 	void ConnectSever(const char *server_ip, const unsigned short port = 4567);
 	int SendText(const char *message, const unsigned int len);
+	void CreateSocket(bool is_tcp = true);
+	void CloseSocket();
 	inline SOCKET communicate() const;
+
 protected:
 	void GetLocalAddress();
-	void CreateSocket(bool is_tcp = true);
 
 private:
 	in_addr local_ip_;

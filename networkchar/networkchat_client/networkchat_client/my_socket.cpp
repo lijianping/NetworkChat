@@ -2,7 +2,8 @@
 
 
 MySocket::MySocket()
-	: is_init_lib(false)
+	: is_init_lib(false),
+	  communicate_(INVALID_SOCKET)
 {
 
 }
@@ -13,6 +14,10 @@ MySocket::~MySocket()
 	if (is_init_lib)
 	{
 		::WSACleanup();
+	}
+	if (communicate_ != INVALID_SOCKET) 
+	{
+		closesocket(communicate_);
 	}
 }
 
@@ -65,9 +70,16 @@ void MySocket::CreateSocket(bool is_tcp /* = true */)
 	}
 }
 
+void MySocket::CloseSocket()
+{
+	::closesocket(communicate_);
+	communicate_ = INVALID_SOCKET;
+}
+
 int MySocket::SendText(const char *message, const unsigned int len) 
 {
 	if (NULL == message)
 		LTHROW(ERR_MSG_NULL)
 	return send(communicate_, message, len, 0);
 }
+

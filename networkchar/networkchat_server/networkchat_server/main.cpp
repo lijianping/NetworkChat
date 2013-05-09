@@ -44,6 +44,9 @@ int main()
 	const unsigned short nPort = 4567;
 	//创建监听套接字
 	SOCKET sListen = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+#ifdef _DEBUG
+	cout <<"listen socket: " <<(int)sListen <<endl;
+#endif
 	sockaddr_in server_addr;
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_port = htons(nPort);
@@ -81,11 +84,14 @@ LRESULT CALLBACK NetworkProc (
 	{
 	case WM_SOCKET:
 		{
-			SOCKET s=wParam;//取得有事件发生的套接字句柄
+			SOCKET s = wParam;//取得有事件发生的套接字句柄
+#ifdef _DEBUG
+			cout <<"scoket: " <<(int)s <<endl;
+			cout <<"Error NO: " <<WSAGETSELECTERROR(lParam) <<endl;
+#endif
 			//查看是否出错
-			if (!WSAGETSELECTERROR(lParam))
+			if (WSAGETSELECTERROR(lParam))
 			{
-				
 				int err_no = WSAGetLastError();
 				cout <<"ERROR: " <<err_no <<endl;
 				::closesocket(s);
@@ -96,6 +102,9 @@ LRESULT CALLBACK NetworkProc (
 			{
 			case FD_ACCEPT:
 				{
+#ifdef _DEBUG
+					cout <<"FD_ACCEPT message" <<endl;
+#endif
 					sockaddr_in remote_addr;
 					int remote_length = sizeof(remote_addr);
 					SOCKET client = ::accept(s, (SOCKADDR*)&remote_addr, &remote_length);
@@ -105,12 +114,18 @@ LRESULT CALLBACK NetworkProc (
 				}
 			case FD_WRITE:
 				{
+#ifdef _DEBUG
+					cout <<"FD_WRITE message" <<endl;
+#endif
 					break;
 				}
 			case FD_READ:
 				{
+#ifdef _DEBUG
+					cout <<"FD_READ message" <<endl;
+#endif
 					char szText[1024]={0};
-					if (::recv(s, szText, sizeof(szText),0)==-1)
+					if (::recv(s, szText, sizeof(szText),0)<0)
 					{
 						closesocket(s);
 					}
@@ -122,7 +137,9 @@ LRESULT CALLBACK NetworkProc (
 				}
 			case FD_CLOSE:
 				{
-					cout <<"Close socket at FD_CLOSE" <<endl;
+#ifdef _DEBUG
+					cout <<"FD_CLOSE message" <<endl;
+#endif
 					::closesocket(s);
 					break;
 				}
