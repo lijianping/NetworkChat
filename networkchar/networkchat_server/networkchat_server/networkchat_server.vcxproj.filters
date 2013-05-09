@@ -18,7 +18,7 @@
     <ClInclude Include="resource.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="main.h">
+    <ClInclude Include="server.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

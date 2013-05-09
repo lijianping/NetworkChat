@@ -8,7 +8,8 @@ enum NETWORKCHAT_ERR
 	ERR_INIT_SOCKET,
 	ERR_GET_HOST,
 	ERR_IP_NULL,
-	ERR_CONNECT
+	ERR_CONNECT,
+	ERR_MSG_NULL
 };
 class Err : public std::exception
 {

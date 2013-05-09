@@ -50,6 +50,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					try {
 						client.InitSocketLib();
 						client.ConnectSever(server_ip);
+						client.SendText("hello", strlen("hello"));
 					} catch (Err &err) {
 						MessageBox(hwndDlg, err.what(), "Error!", MB_ICONINFORMATION);
 						return FALSE;
@@ -64,6 +65,8 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			return TRUE;
 		}
 	case WM_CLOSE:
+		::shutdown(communicate, SD_BOTH);
+		::closesocket(communicate);
 		EndDialog(hwndDlg, 0);
 		return TRUE;
 	}

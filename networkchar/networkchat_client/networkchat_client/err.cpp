@@ -7,7 +7,8 @@ static const char *errs[] =
 	"init socket lib error",     // ≥ı ºªØwinsockø‚ ß∞‹
 	"get local host ip information error",
 	"ip address is null",
-	"connect server failed!"
+	"connect server failed!",
+	"message is null"
 };
 Err::Err(int errcode, const char *file, int line)
 {

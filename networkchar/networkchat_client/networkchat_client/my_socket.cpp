@@ -64,3 +64,10 @@ void MySocket::CreateSocket(bool is_tcp /* = true */)
 		communicate_ = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	}
 }
+
+int MySocket::SendText(const char *message, const unsigned int len) 
+{
+	if (NULL == message)
+		LTHROW(ERR_MSG_NULL)
+	return send(communicate_, message, len, 0);
+}
