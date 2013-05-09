@@ -4,6 +4,10 @@ using namespace std;
 
 LRESULT CALLBACK NetworkProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
+
+map<string, USER_INFO>user_map;
+//map<string, USER_INFO>:iterator it_user;
+
 int main() 
 {
 	WNDCLASS wndclass;
