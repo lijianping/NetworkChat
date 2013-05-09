@@ -108,8 +108,10 @@ LRESULT CALLBACK NetworkProc (
 					sockaddr_in remote_addr;
 					int remote_length = sizeof(remote_addr);
 					SOCKET client = ::accept(s, (SOCKADDR*)&remote_addr, &remote_length);
-					::WSAAsyncSelect(client, hwnd, WM_SOCKET, FD_WRITE|FD_ACCEPT|FD_CLOSE);
+					::WSAAsyncSelect(client, hwnd, WM_SOCKET, FD_WRITE | FD_READ | FD_CLOSE);
 					cout <<"new connection" <<endl;
+					cout <<"IP: " <<::inet_ntoa(remote_addr.sin_addr) <<endl;
+					cout <<"Port: " <<::ntohs(remote_addr.sin_port) <<endl;
 					break;
 				}
 			case FD_WRITE:
