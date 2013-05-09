@@ -9,7 +9,9 @@ enum NETWORKCHAT_ERR
 	ERR_GET_HOST,
 	ERR_IP_NULL,
 	ERR_CONNECT,
-	ERR_MSG_NULL
+	ERR_MSG_NULL,
+	ERR_REQUEST_USER_LIST,
+	ERR_ADD_CAST
 };
 class Err : public std::exception
 {

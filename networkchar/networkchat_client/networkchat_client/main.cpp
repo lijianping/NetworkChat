@@ -1,6 +1,7 @@
 #include "resource.h"
 #include "my_socket.h"
 #include <stdio.h>
+#include <string>
 #include <Windows.h>
 
 MySocket client;
@@ -21,6 +22,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_INITDIALOG:
 		{
 			hInstance = (HINSTANCE)lParam;
+			::SendDlgItemMessage(hwndDlg, IDC_FRIEND_LIST, LB_INSERTSTRING, 0, (long)"Japin");
 			return TRUE;
 		}
 	case WM_COMMAND:
@@ -37,6 +39,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						MessageBox(hwndDlg, "User Name can not be empty!", "HIT", MB_ICONINFORMATION | MB_OK);
 						return FALSE;
 					}
+					client.set_user_name(user_name);
 					// get server ip address
 					char server_ip[16];
 					memset(server_ip, 0, sizeof(server_ip));
@@ -52,12 +55,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						client.InitSocketLib();
 						client.ConnectSever(server_ip);
 						MessageBox(hwndDlg, "Connect server succeed!", "Hit", MB_ICONINFORMATION);
-						int len = client.SendText("hello", strlen("hello"));
-#ifdef _DEBUG
-						char data[32];
-						sprintf_s(data, "Text len: %d", len);
-						MessageBox(hwndDlg,data, "HIT", MB_ICONINFORMATION);
-#endif
+						client.UserLogin();
 					} catch (Err &err) {
 						MessageBox(hwndDlg, err.what(), "Error!", MB_ICONINFORMATION);
 						return FALSE;

@@ -1,6 +1,10 @@
 #include "server.h"
 #include <iostream>
+#include <map>
+#include <string>
 using namespace std;
+
+map<SOCKET, USER_INFO> users;
 
 LRESULT CALLBACK NetworkProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -77,12 +81,7 @@ int main()
 	return 0;
 }
 
-LRESULT CALLBACK NetworkProc (
-	HWND hwnd,
-	UINT uMsg, 
-	WPARAM wParam,
-	LPARAM lParam
-	)
+LRESULT CALLBACK NetworkProc(HWND hwnd,	UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)
 	{
@@ -116,6 +115,10 @@ LRESULT CALLBACK NetworkProc (
 					cout <<"new connection" <<endl;
 					cout <<"IP: " <<::inet_ntoa(remote_addr.sin_addr) <<endl;
 					cout <<"Port: " <<::ntohs(remote_addr.sin_port) <<endl;
+					// 增加登录用户的地址信息
+					USER_INFO user;
+					user.addr = remote_addr;    
+					users.insert(pair<SOCKET, USER_INFO>(client, user));
 					break;
 				}
 			case FD_WRITE:
@@ -137,7 +140,10 @@ LRESULT CALLBACK NetworkProc (
 					}
 					else
 					{
-						cout <<"接收数据：" <<szText <<endl;
+						pMsgInfo *msg = (pMsgInfo *)szText;
+						if (msg->type == MT_CONNECT_USERINFO) {   // 增加用户名
+							users[s].user_name = msg->user_name;  
+						}
 					}
 					break;
 				}
@@ -146,6 +152,7 @@ LRESULT CALLBACK NetworkProc (
 #ifdef _DEBUG
 					cout <<"FD_CLOSE message" <<endl;
 #endif
+					users.erase(s);   // 移出用户
 					::closesocket(s);
 					break;
 				}
@@ -163,8 +170,8 @@ LRESULT CALLBACK NetworkProc (
 
 bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 {
-	USER_MESSAGE* recv_message=(USER_MESSAGE* )recv_buffer;
-	int recv_msg_mark = recv_message->message_mark;
+	MSG_INFO *recv_message=(MSG_INFO *)recv_buffer;
+	int recv_msg_mark = recv_message->type;
 	switch(recv_msg_mark)
 	{
 	case MT_CONNECT_USERINFO://连接用户信息
