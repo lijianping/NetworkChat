@@ -1,5 +1,6 @@
 #include "resource.h"
 #include "my_socket.h"
+#include "chat.h"
 #include <stdio.h>
 #include <string>
 #include <Windows.h>
@@ -10,7 +11,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
-	DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_DIALOG1), NULL, (DLGPROC)MainProc, (LPARAM)&hInstance);
+	DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_DIALOG1), NULL, (DLGPROC)MainProc, (LPARAM)hInstance);
 	return 0;
 }
 
@@ -21,8 +22,11 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_INITDIALOG:
 		{
-			hInstance = (HINSTANCE)lParam;
+			client.set_main_hwnd(hwndDlg);
+            hInstance = (HINSTANCE)lParam;
+			
 			::SendDlgItemMessage(hwndDlg, IDC_FRIEND_LIST, LB_INSERTSTRING, 0, (long)"Japin");
+			::SendDlgItemMessage(hwndDlg, IDC_FRIEND_LIST, LB_ADDSTRING, 0, (long)"多播群");
 			return TRUE;
 		}
 	case WM_COMMAND:
@@ -64,7 +68,24 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					SendMessage(GetDlgItem(hwndDlg, IDC_USER_NAME), EM_SETREADONLY, 1, 0);
 					break;
 				}
+			case IDC_FRIEND_LIST:
+				{
+					//收到双击用户列表中用户名的消息
+					if (HIWORD(wParam)==LBN_DBLCLK)
+					{
+						DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_CHAT), NULL, (DLGPROC)ChatDlgProc, NULL);
+					}
+					break;
+				}
 			}
+			return TRUE;
+		}
+		//自定义消息
+	case WM_CHATMSG:
+		{
+			MSG_INFO *message=(MSG_INFO *)lParam;
+
+			MessageBox(NULL, message->data(), TEXT("用户信息"), 0);
 			return TRUE;
 		}
 	case WM_CLOSE:

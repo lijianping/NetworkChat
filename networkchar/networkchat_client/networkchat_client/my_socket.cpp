@@ -5,7 +5,9 @@ MySocket::MySocket()
 	: is_init_lib_(false),
 	  communicate_(INVALID_SOCKET)
 {
-
+	InitSocketLib();
+	multi_addr_=inet_addr("234.5.6.7");
+	thread_handle = ::CreateThread(NULL, 0, _Recvfrom, this, 0, NULL);
 }
 
 
@@ -86,7 +88,7 @@ void MySocket::UserLogin()
 {
 	char buf[sizeof(MSG_INFO)];
 	memset(buf, 0, sizeof(buf));
-	pMsgInfo *msg = (pMsgInfo *)buf;
+	pMsgInfo msg = (pMsgInfo)buf;
 	msg->type = MT_CONNECT_USERINFO;
 	msg->addr = local_ip_.S_un.S_addr;
 	strncpy_s(msg->user_name, user_name_.c_str(), user_name_.length());
@@ -123,4 +125,70 @@ bool MySocket::JoinGroup()
 	if (SOCKET_ERROR == ret)
 		LTHROW(ERR_ADD_CAST)
 	return true;
+}
+
+DWORD __stdcall _Recvfrom(LPVOID lpParam)
+{
+	MySocket *pMySocket=(MySocket*)lpParam;
+	pMySocket->read_socket_=socket(AF_INET, SOCK_DGRAM, 0);
+	// 允许其它进程使用绑定的地址
+	BOOL bReuse = TRUE;
+	::setsockopt(pMySocket->read_socket_, SOL_SOCKET, SO_REUSEADDR, (char*)&bReuse, sizeof(BOOL));
+	// 绑定端口
+	sockaddr_in si;
+	si.sin_family = AF_INET;
+	si.sin_port = ::ntohs(5000);
+	//TODO:端口是否重用
+	si.sin_addr.S_un.S_addr = INADDR_ANY;
+	int nAddrLen = sizeof(si);
+	::bind(pMySocket->read_socket_, (sockaddr*)&si, sizeof(si));
+	pMySocket->JoinGroup();
+	char buf[4096]={0};
+	//TODO:用户缓冲
+	while (true)
+	{
+		int nRet = ::recvfrom(pMySocket->read_socket_, buf, sizeof(buf), 0, (sockaddr*)&si, &nAddrLen);
+		if(nRet != SOCKET_ERROR)
+		{
+			pMySocket->DispatchMsg(buf, pMySocket->read_socket_);
+		}
+		else
+		{
+			MessageBox(NULL, TEXT("接收消息出错"), TEXT("错误"), MB_ICONERROR);
+			//int n = ::WSAGetLastError();
+			break;
+		}
+	}
+	return 0;
+}
+
+
+
+
+bool MySocket::DispatchMsg(char* recv_buffer, SOCKET current_socket)
+{
+	MSG_INFO *recv_message=(MSG_INFO *)recv_buffer;
+	int recv_msg_mark = recv_message->type;
+	switch(recv_msg_mark)
+	{
+	case MT_MULTICASTING_USERINFO: //多播的在线用户信息
+		{
+			int data_length = recv_message->data_length;
+			char *user_name = new char[data_length];
+			MessageBox(NULL, recv_message->data(), TEXT("收到信息"),0);
+			SendMessage(main_hwnd, WM_CHATMSG, 0, (LPARAM)recv_buffer);
+		    delete [] user_name;
+			break;
+		}
+	case MT_MULTICASTING_TEXT: //多播的聊天信息
+		{
+			break; 
+		}
+	}
+	return false;
+}
+
+bool ShowChatWindow()
+{
+	return false;
 }

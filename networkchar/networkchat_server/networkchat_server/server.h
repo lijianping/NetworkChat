@@ -37,12 +37,13 @@ typedef struct MSG_INFO {
 	char user_name[49];            // 发送此消息的用户的用户名
 	int data_length;               // 数据长度
 	char *data() { return (char *)(this + 1); } // 数据域
-}pMsgInfo;
+}*pMsgInfo;
 
 #define CLIENT_MAX 64
 #define WM_SOCKET WM_USER+1 //自定义消息
 
 
 bool HandleMessage(char* recv_buffer, SOCKET current_socket);
+bool ShowOnlineUser(USER_INFO *pOnlineUser);
 
 #endif

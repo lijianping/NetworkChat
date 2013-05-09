@@ -1,4 +1,5 @@
 #include "server.h"
+#include <stdio.h>
 #include <iostream>
 #include <map>
 #include <string>
@@ -28,7 +29,7 @@ int main()
 	if (!RegisterClass (&wndclass))
 	{
 		MessageBox ( NULL, TEXT ("This program requires Windows NT!"),
-			TEXT("error"), MB_ICONERROR) ;
+			TEXT("error"), MB_ICONERROR);
 		return 0 ;
 	}
 
@@ -119,6 +120,7 @@ LRESULT CALLBACK NetworkProc(HWND hwnd,	UINT uMsg, WPARAM wParam, LPARAM lParam)
 					USER_INFO user;
 					user.addr = remote_addr;    
 					users.insert(pair<SOCKET, USER_INFO>(client, user));
+					//
 					break;
 				}
 			case FD_WRITE:
@@ -140,10 +142,8 @@ LRESULT CALLBACK NetworkProc(HWND hwnd,	UINT uMsg, WPARAM wParam, LPARAM lParam)
 					}
 					else
 					{
-						pMsgInfo *msg = (pMsgInfo *)szText;
-						if (msg->type == MT_CONNECT_USERINFO) {   // 增加用户名
-							users[s].user_name = msg->user_name;  
-						}
+							//处理收到的消息
+						HandleMessage(szText,s);
 					}
 					break;
 				}
@@ -177,6 +177,41 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 	case MT_CONNECT_USERINFO://连接用户信息
 		{
 		    cout <<"连接请求" <<endl;
+			// 增加用户名
+			users[current_socket].user_name = recv_message->user_name;  
+			//多播用户信息
+			SOCKET s = ::socket(AF_INET, SOCK_DGRAM, 0);
+			sockaddr_in si;
+			si.sin_family = AF_INET;
+			si.sin_port = ::htons(5000);
+			si.sin_addr.S_un.S_addr =::inet_addr("234.5.6.7");  
+
+			map<SOCKET, USER_INFO>::iterator it;
+			std::string user_name;
+			int data_length = 0;
+			for (it = users.begin(); it != users.end(); ++it) {
+				user_name += it->second.user_name;
+			    data_length += user_name.length();
+				user_name += '-';
+			    data_length++;	
+			}
+			
+		  char *buff = new char[sizeof(MSG_INFO)+data_length];
+		    memset(buff,0,sizeof(buff));
+			pMsgInfo msg_info = (pMsgInfo)buff;
+			msg_info->type=MT_MULTICASTING_USERINFO;//消息类型为广播的用户信息
+			//just测试ip
+			msg_info->addr=inet_addr("192.168.1.110");
+			strncpy(msg_info->user_name,"server", sizeof(msg_info->user_name));
+			//todo:未初始化ip字段
+			msg_info->data_length = data_length;
+			strncpy(msg_info->data(), user_name.c_str(), user_name.length());
+			buff[sizeof(MSG_INFO)+data_length]='\0';
+			cout<<"buff:"<<buff<<endl;
+			cout<<"用户信息："<<msg_info->data()<<endl;
+			//显示当前在线用户
+			ShowOnlineUser(NULL);
+			cout<<"发送数据长度："<<sendto(s,buff, strlen(buff), 0, (sockaddr *)&si, sizeof(si));
 			break;
 		}
 	case MT_REQUEST_IP: //ip查询请求
@@ -187,6 +222,22 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 		{
 			break; 
 		}
+		return true;
 	}
 	return false;
+}
+
+bool ShowOnlineUser(USER_INFO *pOnlineUser)
+{
+	cout<<"当前在线用户信息："<<endl;
+	cout<<"用户名--"<<"IP地址"<<endl;
+	map<SOCKET, USER_INFO>::iterator it_user;
+	std::string user_name;
+	int data_length = 0;
+	for (it_user = users.begin(); it_user != users.end(); ++it_user) 
+	{
+		cout<<it_user->second.user_name<<"--";
+		cout<<inet_ntoa(it_user->second.addr.sin_addr)<<endl;
+	}
+	return true;
 }

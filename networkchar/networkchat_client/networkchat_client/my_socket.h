@@ -7,11 +7,13 @@
 #include <string>
 #pragma comment(lib, "WS2_32")
 
+#define WM_CHATMSG (WM_USER+100)
 //消息类型
 const enum MSG_TYPE {
 	MT_MULTICASTING_USERINFO = 1,         //多播在线用户信息
 
 	MT_MULTICASTING_TEXT,                 //多播聊天信息
+
 
 	MT_REQUEST_CONNECT,                   //连接请求
 	
@@ -28,7 +30,7 @@ typedef struct MSG_INFO {
 	char user_name[49];            // 发送此消息的用户的用户名
 	int data_length;               // 数据长度
 	char *data() { return (char *)(this + 1); } // 数据域
-}pMsgInfo;
+}*pMsgInfo;
 
 class MySocket
 {
@@ -44,6 +46,7 @@ public:
 	void UserLogin();
 	inline SOCKET communicate() const;
 	inline void set_user_name(const std::string &user_name);
+	inline void set_main_hwnd(HWND hwnd);
 
 protected:
 	void GetLocalAddress();
@@ -56,7 +59,12 @@ private:
 	SOCKET read_socket_;           // 接收数据套接字
 	bool is_init_lib_;
 	unsigned long multi_addr_;    // 多播地址
+	unsigned short multi_port;    //多播端口
 	std::string user_name_;
+	HWND main_hwnd;               //
+	HANDLE thread_handle;            //线程句柄
+	friend DWORD __stdcall _Recvfrom(LPVOID lpParam);
+	bool DispatchMsg(char* recv_buffer, SOCKET current_socket);
 };
 
 SOCKET MySocket::communicate() const
@@ -67,5 +75,10 @@ SOCKET MySocket::communicate() const
 void MySocket::set_user_name(const std::string &user_name)
 {
 	user_name_ = user_name;
+}
+
+void  MySocket:: set_main_hwnd(HWND hwnd)
+{
+	main_hwnd = hwnd;
 }
 #endif
