@@ -2,7 +2,6 @@
 
 BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	
 	switch(uMsg)
 	{
 	case WM_INITDIALOG:
