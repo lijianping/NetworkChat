@@ -196,12 +196,12 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 			    data_length++;	
 			}
 			
-		  char *buff = new char[sizeof(MSG_INFO)+data_length];
-		    memset(buff,0,sizeof(buff));
+		    char *buff = new char[sizeof(MSG_INFO)+data_length];
+		    memset(buff, 0, sizeof(buff));
 			pMsgInfo msg_info = (pMsgInfo)buff;
 			msg_info->type=MT_MULTICASTING_USERINFO;//消息类型为广播的用户信息
 			//just测试ip
-			msg_info->addr=inet_addr("192.168.1.110");
+			msg_info->addr = inet_addr("192.168.1.110");
 			strncpy(msg_info->user_name,"server", sizeof(msg_info->user_name));
 			//todo:未初始化ip字段
 			msg_info->data_length = data_length;
@@ -211,7 +211,7 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 			cout<<"用户信息："<<msg_info->data()<<endl;
 			//显示当前在线用户
 			ShowOnlineUser(NULL);
-			cout<<"发送数据长度："<<sendto(s,buff, strlen(buff), 0, (sockaddr *)&si, sizeof(si));
+			cout<<"发送数据长度："<<sendto(s, buff, sizeof(MSG_INFO) + data_length, 0, (sockaddr *)&si, sizeof(si));
 			break;
 		}
 	case MT_REQUEST_IP: //ip查询请求

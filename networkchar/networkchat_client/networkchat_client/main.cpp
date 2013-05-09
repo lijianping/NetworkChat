@@ -3,9 +3,12 @@
 #include "chat.h"
 #include <stdio.h>
 #include <string>
+#include <map>
 #include <Windows.h>
+using namespace std;
 
 MySocket client;
+map<std::string, HWND> chat_windows;
 
 INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -71,7 +74,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			case IDC_FRIEND_LIST:
 				{
 					//收到双击用户列表中用户名的消息
-					if (HIWORD(wParam)==LBN_DBLCLK)
+					if (HIWORD(wParam) == LBN_DBLCLK)
 					{
 						DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_CHAT), NULL, (DLGPROC)ChatDlgProc, NULL);
 					}
