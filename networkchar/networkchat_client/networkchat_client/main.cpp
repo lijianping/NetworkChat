@@ -1,5 +1,6 @@
 #include "resource.h"
 #include "my_socket.h"
+#include "my_list_box.h"
 #include "chat.h"
 #include <stdio.h>
 #include <string>
@@ -27,9 +28,6 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		{
 			client.set_main_hwnd(hwndDlg);
             hInstance = (HINSTANCE)lParam;
-			
-			::SendDlgItemMessage(hwndDlg, IDC_FRIEND_LIST, LB_INSERTSTRING, 0, (long)"Japin");
-			::SendDlgItemMessage(hwndDlg, IDC_FRIEND_LIST, LB_ADDSTRING, 0, (long)"多播群");
 			return TRUE;
 		}
 	case WM_COMMAND:
@@ -83,12 +81,20 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			}
 			return TRUE;
 		}
-		//自定义消息
-	case WM_CHATMSG:
+	case WM_CHATMSG:   //自定义消息
 		{
 			MSG_INFO *message=(MSG_INFO *)lParam;
-
-			MessageBox(NULL, message->data(), TEXT("用户信息"), 0);
+			string users(message->data());
+			MyListBox list_box(GetDlgItem(hwndDlg, IDC_FRIEND_LIST), IDC_FRIEND_LIST);
+			list_box.DeleteAllString();
+			int start_pos = 0, end_pos = users.length();
+			while (start_pos < end_pos) 
+			{
+				int mid = users.find('/', start_pos);
+				string user_name = users.substr(start_pos, mid - start_pos);
+				start_pos = mid + 1;
+				list_box.AddString(user_name.c_str());
+			}
 			return TRUE;
 		}
 	case WM_CLOSE:
