@@ -7,6 +7,8 @@ using namespace std;
 
 map<SOCKET, USER_INFO> users;
 
+const string GetTime();
+
 LRESULT CALLBACK NetworkProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 
@@ -113,9 +115,9 @@ LRESULT CALLBACK NetworkProc(HWND hwnd,	UINT uMsg, WPARAM wParam, LPARAM lParam)
 					int remote_length = sizeof(remote_addr);
 					SOCKET client = ::accept(s, (SOCKADDR*)&remote_addr, &remote_length);
 					::WSAAsyncSelect(client, hwnd, WM_SOCKET, FD_WRITE | FD_READ | FD_CLOSE);
+					cout <<endl;
 					cout <<"new connection" <<endl;
-					cout <<"IP: " <<::inet_ntoa(remote_addr.sin_addr) <<endl;
-					cout <<"Port: " <<::ntohs(remote_addr.sin_port) <<endl;
+					cout <<"IP: " <<::inet_ntoa(remote_addr.sin_addr) <<" Port: " <<::ntohs(remote_addr.sin_port) <<endl;
 					// 增加登录用户的地址信息
 					USER_INFO user;
 					user.addr = remote_addr;    
@@ -153,6 +155,8 @@ LRESULT CALLBACK NetworkProc(HWND hwnd,	UINT uMsg, WPARAM wParam, LPARAM lParam)
 #ifdef _DEBUG
 					cout <<"FD_CLOSE message" <<endl;
 #endif
+					cout <<endl;
+					cout <<GetTime() <<" -> " <<users[s].user_name <<" sign out" <<endl;
 					users.erase(s);   // 移出用户
 					::closesocket(s);
 					break;
@@ -177,13 +181,14 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 	{
 	case MT_CONNECT_USERINFO://连接用户信息
 		{
-		    cout <<"连接请求" <<endl;
 			// 增加用户名
 			users[current_socket].user_name = recv_message->user_name;  
 #ifdef _DEBUG
-			cout <<"Current Connect User: " <<recv_message->user_name  <<"length: " << strlen(recv_message->user_name)<<endl;
-			cout <<"String User: " <<users[current_socket].user_name <<"length: " <<users[current_socket].user_name.length() <<endl;
+			cout <<"Current Connect User: " <<recv_message->user_name  <<" length: " << strlen(recv_message->user_name)<<endl;
+			cout <<"String User: " <<users[current_socket].user_name <<" length: " <<users[current_socket].user_name.length() <<endl;
 #endif
+			cout <<endl;
+			cout <<GetTime() <<" -> " <<users[current_socket].user_name <<" sign in" <<endl;
 			//多播用户信息
 			SOCKET s = ::socket(AF_INET, SOCK_DGRAM, 0);
 			sockaddr_in si;
@@ -204,27 +209,22 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 		    char *buff = new char[sizeof(MSG_INFO) + data_length];
 		    memset(buff, 0, sizeof(buff));
 			pMsgInfo msg_info = (pMsgInfo)buff;
-			msg_info->type = MT_MULTICASTING_USERINFO;//消息类型为广播的用户信息
-			//just测试ip
-			msg_info->addr = inet_addr("192.168.1.110");
-			strncpy(msg_info->user_name,"server", sizeof(msg_info->user_name));
-			//todo:未初始化ip字段
+			msg_info->type = MT_MULTICASTING_USERINFO; // 消息类型为广播的用户信息
+			strncpy_s(msg_info->user_name,"server", sizeof(msg_info->user_name));
+			// todo:未初始化ip字段
 			msg_info->data_length = data_length;
 			strncpy(msg_info->data(), user_name.c_str(), user_name.length());
 			buff[sizeof(MSG_INFO) + data_length] = '\0';
-			cout<<"buff:"<<buff<<endl;
-			cout<<"用户信息："<<msg_info->data()<<endl;
-			//显示当前在线用户
-			ShowOnlineUser(NULL);
-			cout<<"发送数据长度："<<sendto(s, buff, sizeof(MSG_INFO) + data_length, 0, (sockaddr *)&si, sizeof(si));
+			// 广播在线用户
+			sendto(s, buff, sizeof(MSG_INFO) + data_length, 0, (sockaddr *)&si, sizeof(si));
 			delete [] buff;
 			break;
 		}
-	case MT_REQUEST_IP: //ip查询请求
+	case MT_REQUEST_IP: // ip查询请求
 		{
 			break;
 		}
-	case MT_REQUEST_ALLUSERINFO: //请求获取在线用户信息
+	case MT_REQUEST_ALLUSERINFO: // 请求获取在线用户信息
 		{
 			break; 
 		}
@@ -246,4 +246,31 @@ bool ShowOnlineUser(USER_INFO *pOnlineUser)
 		cout<<inet_ntoa(it_user->second.addr.sin_addr)<<endl;
 	}
 	return true;
+}
+
+const string GetTime()
+{
+	string str_time;
+	SYSTEMTIME sys_time;
+	GetLocalTime(&sys_time);
+	char temp[16];
+	memset(temp, 0, sizeof(temp));
+	sprintf_s(temp, "%d", sys_time.wYear);
+	str_time = string(temp) + '-';
+	memset(temp, 0, sizeof(temp));
+	sprintf_s(temp, "%d", sys_time.wMonth);
+	str_time += (string(temp) + '-');
+	memset(temp, 0, sizeof(temp));
+	sprintf_s(temp, "%d", sys_time.wDay);
+	str_time += (string(temp) + ' ');
+	memset(temp, 0, sizeof(temp));
+	sprintf_s(temp, "%d", sys_time.wHour);
+	str_time += (string(temp) + ':');
+	memset(temp, 0, sizeof(temp));
+	sprintf_s(temp, "%d", sys_time.wMinute);
+	str_time += (string(temp) + ':');
+	memset(temp, 0, sizeof(temp));
+	sprintf_s(temp, "%d", sys_time.wSecond);
+	str_time += temp;
+	return str_time;
 }
