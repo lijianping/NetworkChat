@@ -12,6 +12,8 @@ public:
 	void DeleteAllString();
 	int DeleteString(const int &index);
 	int GetCount();
+	int GetSelect();
+	int GetText(const int index, char *buff);
 
 protected:
 
