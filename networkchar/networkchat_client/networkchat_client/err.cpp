@@ -10,7 +10,8 @@ static const char *errs[] =
 	"connect server failed!",
 	"message is null",
 	"request user list failed",
-	"add to the multi board failed"
+	"add to the multi board failed",
+	"user name is empty"
 };
 Err::Err(int errcode, const char *file, int line)
 {

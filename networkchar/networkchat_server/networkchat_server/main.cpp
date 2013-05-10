@@ -179,10 +179,9 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 		{
 		    cout <<"连接请求" <<endl;
 			// 增加用户名
-			users[current_socket].user_name = recv_message->user_name;  
+			strncpy_s(users[current_socket].user_name, recv_message->user_name, sizeof(recv_message->user_name));  
 #ifdef _DEBUG
-			cout <<"Current Connect User: " <<recv_message->user_name  <<"length: " << strlen(recv_message->user_name)<<endl;
-			cout <<"String User: " <<users[current_socket].user_name <<"length: " <<users[current_socket].user_name.length() <<endl;
+			cout <<"Current Connect User: " <<recv_message->user_name  <<" length: " << strlen(recv_message->user_name)<<endl;
 #endif
 			//多播用户信息
 			SOCKET s = ::socket(AF_INET, SOCK_DGRAM, 0);
@@ -196,9 +195,9 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 			int data_length = 0;
 			for (it = users.begin(); it != users.end(); ++it) {
 				user_name += it->second.user_name;
-			    data_length += it->second.user_name.length();
+			    data_length += strlen(it->second.user_name);
 				user_name += '/';
-			    data_length++;	
+			    data_length++;
 			}
 			
 		    char *buff = new char[sizeof(MSG_INFO) + data_length];
@@ -222,10 +221,47 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 		}
 	case MT_REQUEST_IP: //ip查询请求
 		{
+			cout<<"接收到IP查询请求:"<<endl;
+			map<SOCKET, USER_INFO>::iterator it_user;
+			char temp_user_name[64]={0};
+			//获取查询ip用户名
+			strncpy_s(temp_user_name, recv_message->data(), recv_message->data_length);
+			USER_INFO respond_user;
+			strncpy_s(respond_user.user_name, temp_user_name, sizeof(respond_user.user_name));
+			cout<<"请求查询"<<temp_user_name<<"的ip信息"<<endl;
+			bool is_find = false;
+			//根据用户名在map中找到该用户
+			for(it_user = users.begin(); it_user != users.end(); ++it_user)
+			{
+				if (string(respond_user.user_name) == it_user->second.user_name)
+				{
+					is_find = true;
+					break;
+				}
+			}
+			if (is_find == false)
+			{
+				cout<<"没有查找到该用户"<<endl;
+				break;
+			}
+		    respond_user.addr = it_user->second.addr;//获取查询ip用户地址结构
+			//构造发送数据，响应客户端的ip查询请求
+			char buff[sizeof(MSG_INFO) + 128]={0};
+			pMsgInfo respond_msg = (pMsgInfo)buff;
+			respond_msg->type = MT_RESPOND_IP;
+			strncpy_s(respond_msg->user_name, "server", sizeof("server"));
+			respond_msg->data_length = sizeof(USER_INFO);
+			memcpy(respond_msg->data(), &respond_user, sizeof(USER_INFO));
+#ifdef _DEBUG
+			cout <<"USER INFO: " <<respond_msg->data() <<endl;
+#endif
+			int send_length = ::send(current_socket, buff, sizeof(MSG_INFO) + sizeof(USER_INFO), 0);
+			cout<<"给客户端发送ip查询结果的大小："<<send_length<<endl;
 			break;
 		}
 	case MT_REQUEST_ALLUSERINFO: //请求获取在线用户信息
 		{
+			//TODO:基本与MT_CONNECT_USERINFO同
 			break; 
 		}
 		return true;

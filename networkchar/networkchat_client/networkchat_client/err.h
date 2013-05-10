@@ -11,7 +11,8 @@ enum NETWORKCHAT_ERR
 	ERR_CONNECT,
 	ERR_MSG_NULL,
 	ERR_REQUEST_USER_LIST,
-	ERR_ADD_CAST
+	ERR_ADD_CAST,
+	ERR_USER_NAME_NULL
 };
 class Err : public std::exception
 {

@@ -13,14 +13,16 @@ MyListBox::~MyListBox()
 
 int MyListBox::AddString(const char *data) 
 {
-	return SendMessage(hwnd_, LB_ADDSTRING, 0, (LPARAM)data);
+	return SendMessage(hwnd_, LB_ADDSTRING, 0, (WPARAM)(LPCTSTR)data);
 }
 
 void MyListBox::DeleteAllString()
 {
-	for (int i = 0; i < GetCount(); ++i) 
+	int count = GetCount();
+	while (count != 0) 
 	{
-		DeleteString(i);
+		DeleteString(0);
+		count = GetCount();
 	}
 }
 
@@ -33,4 +35,14 @@ int MyListBox::DeleteString(const int &index)
 int MyListBox::GetCount()
 {
 	return SendMessage(hwnd_, LB_GETCOUNT, 0, 0);
+}
+
+int MyListBox::GetSelect()
+{
+	return SendMessage(hwnd_, LB_GETCURSEL, 0, 0);
+}
+
+int MyListBox::GetText(const int index, char *buff)
+{
+	return SendMessage(hwnd_, LB_GETTEXT, (WPARAM)index, (LPARAM)buff);
 }

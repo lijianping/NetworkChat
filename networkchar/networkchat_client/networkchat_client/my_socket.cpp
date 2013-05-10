@@ -84,6 +84,21 @@ void MySocket::RequestUserList()
 		LTHROW(ERR_REQUEST_USER_LIST)
 }
 
+void MySocket::RequestUserIp(const char *user_name, const int len)
+{
+	if (user_name == NULL)
+		LTHROW(ERR_USER_NAME_NULL)
+	
+	char *buff = new char[sizeof(MSG_INFO) + len];
+	pMsgInfo request_ip = (pMsgInfo)buff;
+	request_ip->type = MT_REQUEST_IP;
+	strncpy_s(request_ip->user_name, user_name_.c_str(), user_name_.length());
+	strncpy(request_ip->data(), user_name, len);
+	// TODO: ´íÎó´¦Àí
+	Send(buff, sizeof(MSG_INFO) + len);
+	delete [] buff;
+}
+
 void MySocket::UserLogin()
 {
 	char buf[sizeof(MSG_INFO)];
@@ -150,7 +165,8 @@ DWORD __stdcall _Recvfrom(LPVOID lpParam)
 		int nRet = ::recvfrom(pMySocket->read_socket_, buf, sizeof(buf), 0, (sockaddr*)&si, &nAddrLen);
 		if(nRet != SOCKET_ERROR)
 		{
-			pMySocket->DispatchMsg(buf, pMySocket->read_socket_);
+			SendMessage(pMySocket->main_hwnd, WM_CHATMSG, 0, (LPARAM)buf);
+		//	pMySocket->DispatchMsg(buf, pMySocket->read_socket_);
 		}
 		else
 		{
