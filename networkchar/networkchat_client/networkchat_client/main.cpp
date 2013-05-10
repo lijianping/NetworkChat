@@ -62,6 +62,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					try {
 						client->InitSocketLib();
 						client->ConnectSever(server_ip);
+						//TODO:增加UDP，tcp接收线程
 						MessageBox(hwndDlg, "Connect server succeed!", "Hit", MB_ICONINFORMATION);
 						client->UserLogin();
 					} catch (Err &err) {

@@ -66,7 +66,7 @@ private:
 	in_addr local_ip_;
 	sockaddr_in server_addr_;
 	SOCKET communicate_;          // 通信套接字
-	SOCKET read_socket_;           // 接收数据套接字
+	SOCKET read_udp_;           // 接收数据套接字
 	bool is_init_lib_;
 	unsigned long multi_addr_;    // 多播地址
 	unsigned short multi_port;    //多播端口
@@ -74,6 +74,7 @@ private:
 	HWND main_hwnd;               //
 	HANDLE thread_handle;            //线程句柄
 	friend DWORD __stdcall _Recvfrom(LPVOID lpParam);
+	friend DWORD __stdcall _Recv(LPVOID lpParam);
 	bool DispatchMsg(char* recv_buffer, SOCKET current_socket);
 };
 

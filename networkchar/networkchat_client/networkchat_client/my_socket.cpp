@@ -7,7 +7,7 @@ MySocket::MySocket()
 {
 	InitSocketLib();
 	multi_addr_=inet_addr("234.5.6.7");
-	thread_handle = ::CreateThread(NULL, 0, _Recvfrom, this, 0, NULL);
+//	thread_handle = ::CreateThread(NULL, 0, _Recvfrom, this, 0, NULL);
 }
 
 
@@ -136,7 +136,7 @@ bool MySocket::JoinGroup()
 	struct ip_mreq mcast;
 	mcast.imr_interface.S_un.S_addr = INADDR_ANY;
 	mcast.imr_multiaddr.S_un.S_addr = multi_addr_;
-	int ret = ::setsockopt(read_socket_, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&mcast, sizeof(mcast));
+	int ret = ::setsockopt(read_udp_, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&mcast, sizeof(mcast));
 	if (SOCKET_ERROR == ret)
 		LTHROW(ERR_ADD_CAST)
 	return true;
@@ -145,10 +145,10 @@ bool MySocket::JoinGroup()
 DWORD __stdcall _Recvfrom(LPVOID lpParam)
 {
 	MySocket *pMySocket=(MySocket*)lpParam;
-	pMySocket->read_socket_=socket(AF_INET, SOCK_DGRAM, 0);
+	pMySocket->read_udp_=socket(AF_INET, SOCK_DGRAM, 0);
 	// 允许其它进程使用绑定的地址
 	BOOL bReuse = TRUE;
-	::setsockopt(pMySocket->read_socket_, SOL_SOCKET, SO_REUSEADDR, (char*)&bReuse, sizeof(BOOL));
+	::setsockopt(pMySocket->read_udp_, SOL_SOCKET, SO_REUSEADDR, (char*)&bReuse, sizeof(BOOL));
 	// 绑定端口
 	sockaddr_in si;
 	si.sin_family = AF_INET;
@@ -156,17 +156,17 @@ DWORD __stdcall _Recvfrom(LPVOID lpParam)
 	//TODO:端口是否重用
 	si.sin_addr.S_un.S_addr = INADDR_ANY;
 	int nAddrLen = sizeof(si);
-	::bind(pMySocket->read_socket_, (sockaddr*)&si, sizeof(si));
+	::bind(pMySocket->read_udp_, (sockaddr*)&si, sizeof(si));
 	pMySocket->JoinGroup();
 	char buf[4096]={0};
 	//TODO:用户缓冲
 	while (true)
 	{
-		int nRet = ::recvfrom(pMySocket->read_socket_, buf, sizeof(buf), 0, (sockaddr*)&si, &nAddrLen);
+		int nRet = ::recvfrom(pMySocket->read_udp_, buf, sizeof(buf), 0, (sockaddr*)&si, &nAddrLen);
 		if(nRet != SOCKET_ERROR)
 		{
 			SendMessage(pMySocket->main_hwnd, WM_CHATMSG, 0, (LPARAM)buf);
-		//	pMySocket->DispatchMsg(buf, pMySocket->read_socket_);
+		//	pMySocket->DispatchMsg(buf, pMySocket->read_udp_);
 		}
 		else
 		{
@@ -178,6 +178,17 @@ DWORD __stdcall _Recvfrom(LPVOID lpParam)
 	return 0;
 }
 
+/*
+ * 说明：
+ *     TCP接收数据线程
+ * 参数：
+ *      lpParam [in] 此处为MySocket对象
+ */
+DWORD __stdcall _Recv(LPVOID lpParam)
+{
+	MySocket *pMySocket=(MySocket*)lpParam;
+	return 0;
+}
 
 
 
