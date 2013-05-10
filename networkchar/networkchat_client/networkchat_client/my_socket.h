@@ -73,6 +73,8 @@ private:
 	std::string user_name_;
 	HWND main_hwnd;               //
 	HANDLE thread_handle;            //Ïß³Ì¾ä±ú
+	HANDLE TCP_thread_;
+	bool is_exit_;         
 	friend DWORD __stdcall _Recvfrom(LPVOID lpParam);
 	friend DWORD __stdcall _Recv(LPVOID lpParam);
 	bool DispatchMsg(char* recv_buffer, SOCKET current_socket);

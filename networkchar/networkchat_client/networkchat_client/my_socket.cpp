@@ -3,7 +3,8 @@
 
 MySocket::MySocket()
 	: is_init_lib_(false),
-	  communicate_(INVALID_SOCKET)
+	  communicate_(INVALID_SOCKET),
+	  is_exit_(false)
 {
 	InitSocketLib();
 	multi_addr_=inet_addr("234.5.6.7");
@@ -17,6 +18,7 @@ MySocket::~MySocket()
 	{
 		::WSACleanup();
 	}
+	::CloseHandle(TCP_thread_);
 }
 
 void MySocket::InitSocketLib(BYTE minor_version /* = 2 */, BYTE major_version /* = 2 */)
@@ -44,6 +46,7 @@ void MySocket::ConnectSever(const char *server_ip,
 	CreateSocket();
 	if (-1 == ::connect(communicate_, (sockaddr *)&server_addr_, sizeof(server_addr_)))
 		LTHROW(ERR_CONNECT)
+	TCP_thread_ = ::CreateThread(NULL, 0, _Recv, this, 0, NULL);
 }
 
 
@@ -68,7 +71,9 @@ void MySocket::CreateSocket(bool is_tcp /* = true */)
 
 void MySocket::CloseSocket()
 {
-	::closesocket(communicate_);
+	//::WaitForSingleObject(TCP_thread_, 0);
+	is_exit_ = true;
+
 }
 
 int MySocket::Send(const char *message, const unsigned int len) 
@@ -174,6 +179,7 @@ DWORD __stdcall _Recvfrom(LPVOID lpParam)
 			//int n = ::WSAGetLastError();
 			break;
 		}
+
 	}
 	return 0;
 }
@@ -186,11 +192,31 @@ DWORD __stdcall _Recvfrom(LPVOID lpParam)
  */
 DWORD __stdcall _Recv(LPVOID lpParam)
 {
-	MySocket *pMySocket=(MySocket*)lpParam;
-	return 0;
+	MySocket *my_socket = (MySocket *)lpParam;
+	if (my_socket == NULL)
+	{
+		return -1;
+	}
+	BOOL bReuse = TRUE;
+	::setsockopt(my_socket->communicate_, SOL_SOCKET, SO_REUSEADDR, (char*)&bReuse, sizeof(BOOL));
+	unsigned long ul=1;
+	::ioctlsocket(my_socket->communicate_, FIONBIO, (unsigned long* )&ul);
+	char buff[4096];
+	memset(buff, 0, sizeof(buff));
+	while (true)
+	{
+		int ret_len = ::recv(my_socket->communicate_, buff, sizeof(buff), 0);
+		if (ret_len > 0)
+		{
+			SendMessage(my_socket->main_hwnd, WM_CHATMSG, 0, (LPARAM)buff);
+		}
+		if (my_socket->is_exit_)
+		{
+			break;
+		}
+	}
+	::closesocket(my_socket->communicate_);
 }
-
-
 
 bool MySocket::DispatchMsg(char* recv_buffer, SOCKET current_socket)
 {
