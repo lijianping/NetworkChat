@@ -76,6 +76,7 @@
   <ItemGroup>
     <ClInclude Include="chat.h" />
     <ClInclude Include="err.h" />
+    <ClInclude Include="my_list_box.h" />
     <ClInclude Include="my_socket.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
@@ -86,6 +87,7 @@
     <ClCompile Include="chat.cpp" />
     <ClCompile Include="err.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="my_list_box.cpp" />
     <ClCompile Include="my_socket.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
