@@ -130,7 +130,7 @@ bool MySocket::JoinGroup()
 DWORD __stdcall _Recvfrom(LPVOID lpParam)
 {
 	MySocket *pMySocket=(MySocket*)lpParam;
-	pMySocket->read_socket_ = ::socket(AF_INET, SOCK_DGRAM, 0);
+	pMySocket->read_socket_=socket(AF_INET, SOCK_DGRAM, 0);
 	// 允许其它进程使用绑定的地址
 	BOOL bReuse = TRUE;
 	::setsockopt(pMySocket->read_socket_, SOL_SOCKET, SO_REUSEADDR, (char*)&bReuse, sizeof(BOOL));
@@ -159,7 +159,6 @@ DWORD __stdcall _Recvfrom(LPVOID lpParam)
 			break;
 		}
 	}
-	::closesocket(pMySocket->read_socket_);
 	return 0;
 }
 

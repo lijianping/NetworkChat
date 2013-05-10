@@ -34,13 +34,3 @@ int MyListBox::GetCount()
 {
 	return SendMessage(hwnd_, LB_GETCOUNT, 0, 0);
 }
-
-int MyListBox::GetSelect()
-{
-	return SendMessage(hwnd_, LB_GETCURSEL, 0, 0);
-}
-
-int MyListBox::GetText(const int index, char *buff)
-{
-	return SendMessage(hwnd_, LB_GETTEXT, index, (LPARAM)buff);
-}

@@ -8,28 +8,25 @@
 #include <Windows.h>
 using namespace std;
 
-MySocket *cli = NULL;
+MySocket client;
 map<std::string, HWND> chat_windows;
 
 INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
-	cli = new MySocket;
 	DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_DIALOG1), NULL, (DLGPROC)MainProc, (LPARAM)hInstance);
-	delete cli;
 	return 0;
 }
 
 INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 {
 	static HINSTANCE hInstance;
-	static string current_user_name;
 	switch (uMsg) 
 	{
 	case WM_INITDIALOG:
 		{
-			cli->set_main_hwnd(hwndDlg);
+			client.set_main_hwnd(hwndDlg);
             hInstance = (HINSTANCE)lParam;
 			return TRUE;
 		}
@@ -47,8 +44,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						MessageBox(hwndDlg, "User Name can not be empty!", "HIT", MB_ICONINFORMATION | MB_OK);
 						return FALSE;
 					}
-					current_user_name = user_name;
-					cli->set_user_name(user_name);
+					client.set_user_name(user_name);
 					// get server ip address
 					char server_ip[16];
 					memset(server_ip, 0, sizeof(server_ip));
@@ -61,10 +57,10 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					}
 					// connect to the server
 					try {
-						cli->InitSocketLib();
-						cli->ConnectSever(server_ip);
+						client.InitSocketLib();
+						client.ConnectSever(server_ip);
 						MessageBox(hwndDlg, "Connect server succeed!", "Hit", MB_ICONINFORMATION);
-						cli->UserLogin();
+						client.UserLogin();
 					} catch (Err &err) {
 						MessageBox(hwndDlg, err.what(), "Error!", MB_ICONINFORMATION);
 						return FALSE;
@@ -78,16 +74,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					//收到双击用户列表中用户名的消息
 					if (HIWORD(wParam) == LBN_DBLCLK)
 					{
-						MyListBox list_box(GetDlgItem(hwndDlg, IDC_FRIEND_LIST), IDC_FRIEND_LIST);
-						int selected = list_box.GetSelect();
-						if (LB_ERR == selected) 
-						{
-							break;
-						}
-						char buffer[128];
-						memset(buffer, 0, sizeof(buffer));
-						list_box.GetText(selected, buffer);
-						DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_CHAT), NULL, (DLGPROC)ChatDlgProc, (LPARAM)buffer);
+						DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_CHAT), NULL, (DLGPROC)ChatDlgProc, NULL);
 					}
 					break;
 				}
@@ -111,7 +98,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			return TRUE;
 		}
 	case WM_CLOSE:
-		cli->CloseSocket();
+		client.CloseSocket();
 		EndDialog(hwndDlg, 0);
 		return TRUE;
 	}

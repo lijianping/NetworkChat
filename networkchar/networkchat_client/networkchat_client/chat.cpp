@@ -1,20 +1,12 @@
 #include "chat.h"
-#include <string>
-#include <map>
-using namespace std;
-
-extern map<string, HWND> chat_windows;
 
 BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	static string chat_user_name;
+	
 	switch(uMsg)
 	{
 	case WM_INITDIALOG:
 		{
-			char *name = (char *)lParam;
-			chat_user_name = name;
-			chat_windows[chat_user_name] = hChatDlg;
 			return TRUE;
 		}
 	case WM_COMMAND:
@@ -23,7 +15,7 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 			{
 			case IDC_SEND:
 				{
-					MessageBox(hChatDlg, chat_user_name.c_str(), "FDF",0);
+					MessageBox(NULL, "FASONG", "FDF",0);
 					break;
 				}
 			}
@@ -31,7 +23,6 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 		}
 	case  WM_CLOSE:
 		{
-			chat_windows.erase(chat_windows.find(chat_user_name));
 			EndDialog(hChatDlg, 0);
 			return TRUE;
 		}
