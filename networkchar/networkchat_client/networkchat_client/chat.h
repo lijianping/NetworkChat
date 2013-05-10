@@ -2,8 +2,11 @@
 #define NETWORKCHAT_CLIENT_CHAT_H_
 
 #include "my_socket.h"
-#include <windows.h>
 #include "resource.h"
+#include <windows.h>
+#include <string>
+#include <map>
+using namespace std;
 
 #define WM_USER_IP (WM_USER + 101)
 

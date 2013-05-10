@@ -1,6 +1,6 @@
 #include "chat.h"
 
-
+extern map<std::string, HWND> chat_windows;
 BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch(uMsg)
@@ -8,6 +8,7 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 	case WM_INITDIALOG:
 		{
 			SetWindowText(hChatDlg, (LPCTSTR)lParam);
+			chat_windows.insert(pair<string, HWND>((char *)lParam, hChatDlg));
 			return TRUE;
 		}
 	case WM_COMMAND:
@@ -17,6 +18,11 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 			case IDC_SEND:
 				{
 					MessageBox(NULL, "FASONG", "FDF",0);
+					break;
+				}
+			case IDC_CLOSE_CHAT:
+				{
+					SendMessage(hChatDlg, WM_CLOSE, 0, 0);
 					break;
 				}
 			}
@@ -33,6 +39,10 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 		}
 	case  WM_CLOSE:
 		{
+			char name[64];
+			memset(name, 0, sizeof(name));
+			GetWindowText(hChatDlg, name, sizeof(name));
+			chat_windows.erase(name);
 			EndDialog(hChatDlg, 0);
 			return TRUE;
 		}
