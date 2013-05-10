@@ -11,7 +11,7 @@ using namespace std;
 //用户信息结构体（用户名做map的key值，用户信息做value）
 struct USER_INFO
 {
-	std::string user_name;
+	char user_name[48];
 	sockaddr_in addr;
 }*pUSER_INFO;
 
@@ -27,7 +27,9 @@ const enum MSG_TYPE {
 
 	MT_REQUEST_ALLUSERINFO,               //请求获取在线用户信息
 
-	MT_CONNECT_USERINFO                   //连接用户信息
+	MT_CONNECT_USERINFO,                   //连接用户信息
+
+	MT_RESPOND_IP                     //返回ip查询请求的ip信息
 };
 
 // 64 bytes
