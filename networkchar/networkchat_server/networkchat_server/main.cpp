@@ -7,6 +7,13 @@ using namespace std;
 
 map<SOCKET, USER_INFO> users;
 
+
+/*
+ * @ brief: 获取系统时间
+ * @ return: 字符格式时间 格式为 YYYY-MM-DD hh:mm:ss
+ **/
+const string GetTime();
+
 LRESULT CALLBACK NetworkProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 
@@ -126,6 +133,7 @@ LRESULT CALLBACK NetworkProc(HWND hwnd,	UINT uMsg, WPARAM wParam, LPARAM lParam)
 			case FD_WRITE:
 				{
 #ifdef _DEBUG
+					cout <<endl;
 					cout <<"FD_WRITE message" <<endl;
 #endif
 					break;
@@ -133,6 +141,7 @@ LRESULT CALLBACK NetworkProc(HWND hwnd,	UINT uMsg, WPARAM wParam, LPARAM lParam)
 			case FD_READ:
 				{
 #ifdef _DEBUG
+					cout <<endl;
 					cout <<"FD_READ message" <<endl;
 #endif
 					char szText[1024];
@@ -151,8 +160,11 @@ LRESULT CALLBACK NetworkProc(HWND hwnd,	UINT uMsg, WPARAM wParam, LPARAM lParam)
 			case FD_CLOSE:
 				{
 #ifdef _DEBUG
+					cout <<endl;
 					cout <<"FD_CLOSE message" <<endl;
 #endif
+					cout <<endl;
+					cout <<users[s].user_name <<" sign out at " <<GetTime() <<endl;
 					users.erase(s);   // 移出用户
 					::closesocket(s);
 					break;
@@ -183,39 +195,48 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 #ifdef _DEBUG
 			cout <<"Current Connect User: " <<recv_message->user_name  <<" length: " << strlen(recv_message->user_name)<<endl;
 #endif
-			//多播用户信息
-			SOCKET s = ::socket(AF_INET, SOCK_DGRAM, 0);
-			sockaddr_in si;
-			si.sin_family = AF_INET;
-			si.sin_port = ::htons(5000);
-			si.sin_addr.S_un.S_addr =::inet_addr("234.5.6.7");  
-
-			map<SOCKET, USER_INFO>::iterator it;
+			cout <<endl;
+			cout <<users[current_socket].user_name <<" sign in at " <<GetTime() <<endl;
+			map<SOCKET, USER_INFO>::const_iterator it;
 			std::string user_name;
 			int data_length = 0;
+			// 格式在线好友名称
 			for (it = users.begin(); it != users.end(); ++it) {
 				user_name += it->second.user_name;
 			    data_length += strlen(it->second.user_name);
 				user_name += '/';
 			    data_length++;
 			}
-			
+			// 构造消息结构
 		    char *buff = new char[sizeof(MSG_INFO) + data_length];
 		    memset(buff, 0, sizeof(buff));
 			pMsgInfo msg_info = (pMsgInfo)buff;
-			msg_info->type = MT_MULTICASTING_USERINFO;//消息类型为广播的用户信息
-			//just测试ip
-			msg_info->addr = inet_addr("192.168.1.110");
-			strncpy(msg_info->user_name,"server", sizeof(msg_info->user_name));
-			//todo:未初始化ip字段
-			msg_info->data_length = data_length;
-			strncpy(msg_info->data(), user_name.c_str(), user_name.length());
+			msg_info->type = MT_MULTICASTING_USERINFO;        // 初始化消息类型
+			char host_name[128];
+			memset(host_name, 0, sizeof(host_name));
+			::gethostname(host_name, sizeof(host_name));      // 获取主机名
+			hostent *host = ::gethostbyname(host_name);
+			msg_info->addr = inet_addr(host->h_addr_list[0]); // 初始化发送者ip地址
+			// 初始化发送者名称
+			strncpy_s(msg_info->user_name,"server", sizeof(msg_info->user_name));
+			msg_info->data_length = data_length;     // 初始化数据字段长度
+			strncpy(msg_info->data(), user_name.c_str(), (size_t)user_name.length());
 			buff[sizeof(MSG_INFO) + data_length] = '\0';
-			cout<<"buff:"<<buff<<endl;
-			cout<<"用户信息："<<msg_info->data()<<endl;
-			//显示当前在线用户
-			ShowOnlineUser(NULL);
-			cout<<"发送数据长度："<<sendto(s, buff, sizeof(MSG_INFO) + data_length, 0, (sockaddr *)&si, sizeof(si));
+			// 向在线用户主动更新好友列表
+			for (it = users.begin(); it != users.end(); ++it)
+			{
+				::send(it->first, buff, sizeof(MSG_INFO) + data_length, 0);
+			}
+			/*
+			// HIT: 多播在局域网中不能接收数据，将其替换为TCP
+			// 多播用户信息
+			SOCKET s = ::socket(AF_INET, SOCK_DGRAM, 0);
+			sockaddr_in si;
+			si.sin_family = AF_INET;
+			si.sin_port = ::htons(5000);
+			si.sin_addr.S_un.S_addr =::inet_addr("234.5.6.7");  
+			sendto(s, buff, sizeof(MSG_INFO) + data_length, 0, (sockaddr *)&si, sizeof(si));
+			*/
 			delete [] buff;
 			break;
 		}
@@ -269,17 +290,29 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 	return false;
 }
 
-bool ShowOnlineUser(USER_INFO *pOnlineUser)
+const string GetTime()
 {
-	cout<<"当前在线用户信息："<<endl;
-	cout<<"用户名--"<<"IP地址"<<endl;
-	map<SOCKET, USER_INFO>::iterator it_user;
-	std::string user_name;
-	int data_length = 0;
-	for (it_user = users.begin(); it_user != users.end(); ++it_user) 
-	{
-		cout<<it_user->second.user_name<<"--";
-		cout<<inet_ntoa(it_user->second.addr.sin_addr)<<endl;
-	}
-	return true;
+	string str_time;
+    SYSTEMTIME sys_time;
+    GetLocalTime(&sys_time);
+	char temp[16];
+	memset(temp, 0, sizeof(temp));
+	sprintf_s(temp, "%d", sys_time.wYear);
+	str_time = string(temp) + '-';
+	memset(temp, 0, sizeof(temp));
+	sprintf_s(temp, "%d", sys_time.wMonth);
+	str_time += (string(temp) + '-');
+	memset(temp, 0, sizeof(temp));
+	sprintf_s(temp, "%d", sys_time.wDay);
+	str_time += (string(temp) + ' ');
+	memset(temp, 0, sizeof(temp));
+	sprintf_s(temp, "%d", sys_time.wHour);
+	str_time += (string(temp) + ':');
+	memset(temp, 0, sizeof(temp));
+	sprintf_s(temp, "%d", sys_time.wMinute);
+	str_time += (string(temp) + ':');
+	memset(temp, 0, sizeof(temp));
+	sprintf_s(temp, "%d", sys_time.wSecond);
+	str_time += temp;
+	return str_time;
 }

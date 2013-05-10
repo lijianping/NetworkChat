@@ -44,6 +44,7 @@ void MySocket::ConnectSever(const char *server_ip,
 	CreateSocket();
 	if (-1 == ::connect(communicate_, (sockaddr *)&server_addr_, sizeof(server_addr_)))
 		LTHROW(ERR_CONNECT)
+	TCP_thread_ = ::CreateThread(NULL, 0, _Recv, this, 0, NULL);
 }
 
 
@@ -68,6 +69,8 @@ void MySocket::CreateSocket(bool is_tcp /* = true */)
 
 void MySocket::CloseSocket()
 {
+	::WaitForSingleObject(TCP_thread_, 0);
+	::CloseHandle(TCP_thread_);
 	::closesocket(communicate_);
 }
 
@@ -145,7 +148,7 @@ bool MySocket::JoinGroup()
 DWORD __stdcall _Recvfrom(LPVOID lpParam)
 {
 	MySocket *pMySocket=(MySocket*)lpParam;
-	pMySocket->read_socket_=socket(AF_INET, SOCK_DGRAM, 0);
+	pMySocket->read_socket_ = socket(AF_INET, SOCK_DGRAM, 0);
 	// 允许其它进程使用绑定的地址
 	BOOL bReuse = TRUE;
 	::setsockopt(pMySocket->read_socket_, SOL_SOCKET, SO_REUSEADDR, (char*)&bReuse, sizeof(BOOL));
@@ -178,8 +181,26 @@ DWORD __stdcall _Recvfrom(LPVOID lpParam)
 	return 0;
 }
 
-
-
+DWORD __stdcall _Recv(LPVOID lpParam)
+{
+	MySocket *my_socket = (MySocket *)lpParam;
+	if (my_socket == NULL)
+	{
+		return -1;
+	}
+	BOOL bReuse = TRUE;
+	::setsockopt(my_socket->read_socket_, SOL_SOCKET, SO_REUSEADDR, (char*)&bReuse, sizeof(BOOL));
+	char buff[4096];
+	memset(buff, 0, sizeof(buff));
+	while (true)
+	{
+		int ret_len = ::recv(my_socket->communicate_, buff, sizeof(buff), 0);
+		if (ret_len > 0)
+		{
+			SendMessage(my_socket->main_hwnd, WM_CHATMSG, 0, (LPARAM)buff);
+		}
+	}
+}
 
 bool MySocket::DispatchMsg(char* recv_buffer, SOCKET current_socket)
 {

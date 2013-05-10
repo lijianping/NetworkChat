@@ -31,6 +31,13 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		{
 			client->set_main_hwnd(hwndDlg);
             hInstance = (HINSTANCE)lParam;
+			HICON main_icon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1));
+			if (main_icon) 
+			{
+				SendMessage(hwndDlg, WM_SETICON, ICON_SMALL, (LPARAM)main_icon);
+				SendMessage(hwndDlg, WM_SETICON, ICON_BIG, (LPARAM)main_icon);
+			}
+			SendDlgItemMessage(hwndDlg, IDC_FRIEND_LIST, LB_ADDSTRING, 0, (LPARAM)"sele");
 			return TRUE;
 		}
 	case WM_COMMAND:
@@ -87,7 +94,9 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						memset(buffer, 0, sizeof(buffer));
 						list_box.GetText(selected, buffer);
 						client->RequestUserIp(buffer, strlen(buffer));
-						DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_CHAT), NULL, (DLGPROC)ChatDlgProc, (LPARAM)buffer);
+						HWND chat_hwnd = CreateDialog(hInstance, MAKEINTRESOURCE(IDD_CHAT), hwndDlg, (DLGPROC)ChatDlgProc);
+
+					//	DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_CHAT), NULL, (DLGPROC)ChatDlgProc, (LPARAM)buffer);
 					}
 					break;
 				}

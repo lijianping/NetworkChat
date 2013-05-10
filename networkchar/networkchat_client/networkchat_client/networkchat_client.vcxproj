@@ -90,6 +90,9 @@
     <ClCompile Include="my_list_box.cpp" />
     <ClCompile Include="my_socket.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="resources\chat.ico" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
