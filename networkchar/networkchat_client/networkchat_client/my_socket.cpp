@@ -5,9 +5,9 @@ MySocket::MySocket()
 	: is_init_lib_(false),
 	  communicate_(INVALID_SOCKET)
 {
-	InitSocketLib();
-	multi_addr_=inet_addr("234.5.6.7");
-	thread_handle = ::CreateThread(NULL, 0, _Recvfrom, this, 0, NULL);
+// 	InitSocketLib();
+// 	multi_addr_ = inet_addr("234.5.6.7");
+// 	thread_handle = ::CreateThread(NULL, 0, _Recvfrom, this, 0, NULL);
 }
 
 
@@ -189,7 +189,7 @@ DWORD __stdcall _Recv(LPVOID lpParam)
 		return -1;
 	}
 	BOOL bReuse = TRUE;
-	::setsockopt(my_socket->read_socket_, SOL_SOCKET, SO_REUSEADDR, (char*)&bReuse, sizeof(BOOL));
+	::setsockopt(my_socket->communicate_, SOL_SOCKET, SO_REUSEADDR, (char*)&bReuse, sizeof(BOOL));
 	char buff[4096];
 	memset(buff, 0, sizeof(buff));
 	while (true)
