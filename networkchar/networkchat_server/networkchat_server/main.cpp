@@ -166,6 +166,37 @@ LRESULT CALLBACK NetworkProc(HWND hwnd,	UINT uMsg, WPARAM wParam, LPARAM lParam)
 					cout <<endl;
 					cout <<users[s].user_name <<" sign out at " <<GetTime() <<endl;
 					users.erase(s);   // 移出用户
+					map<SOCKET, USER_INFO>::const_iterator it;
+					std::string user_name;
+					int data_length = 0;
+					// 格式在线好友名称
+					for (it = users.begin(); it != users.end(); ++it) {
+						user_name += it->second.user_name;
+						data_length += strlen(it->second.user_name);
+						user_name += '/';
+						data_length++;
+					}
+					// 构造消息结构
+					char *buff = new char[sizeof(MSG_INFO) + data_length];
+					memset(buff, 0, sizeof(buff));
+					pMsgInfo msg_info = (pMsgInfo)buff;
+					msg_info->type = MT_MULTICASTING_USERINFO;        // 初始化消息类型
+					char host_name[128];
+					memset(host_name, 0, sizeof(host_name));
+					::gethostname(host_name, sizeof(host_name));      // 获取主机名
+					hostent *host = ::gethostbyname(host_name);
+					msg_info->addr = inet_addr(host->h_addr_list[0]); // 初始化发送者ip地址
+					// 初始化发送者名称
+					strncpy_s(msg_info->user_name,"server", sizeof(msg_info->user_name));
+					msg_info->data_length = data_length;     // 初始化数据字段长度
+					strncpy(msg_info->data(), user_name.c_str(), (size_t)user_name.length());
+					// 向在线用户主动更新好友列表
+					for (it = users.begin(); it != users.end(); ++it)
+					{
+						::send(it->first, buff, sizeof(MSG_INFO) + data_length, 0);
+					}
+					delete [] buff;
+					buff = NULL;
 					::closesocket(s);
 					break;
 				}
@@ -218,15 +249,16 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 			hostent *host = ::gethostbyname(host_name);
 			msg_info->addr = inet_addr(host->h_addr_list[0]); // 初始化发送者ip地址
 			// 初始化发送者名称
-			strncpy_s(msg_info->user_name,"server", sizeof(msg_info->user_name));
+			strncpy_s(msg_info->user_name,"server", sizeof("server"));
 			msg_info->data_length = data_length;     // 初始化数据字段长度
 			strncpy(msg_info->data(), user_name.c_str(), (size_t)user_name.length());
-			buff[sizeof(MSG_INFO) + data_length] = '\0';
 			// 向在线用户主动更新好友列表
 			for (it = users.begin(); it != users.end(); ++it)
 			{
 				::send(it->first, buff, sizeof(MSG_INFO) + data_length, 0);
 			}
+			delete [] buff;
+			buff = NULL;
 			/*
 			// HIT: 多播在局域网中不能接收数据，将其替换为TCP
 			// 多播用户信息
@@ -237,7 +269,7 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 			si.sin_addr.S_un.S_addr =::inet_addr("234.5.6.7");  
 			sendto(s, buff, sizeof(MSG_INFO) + data_length, 0, (sockaddr *)&si, sizeof(si));
 			*/
-			delete [] buff;
+			
 			break;
 		}
 	case MT_REQUEST_IP: //ip查询请求

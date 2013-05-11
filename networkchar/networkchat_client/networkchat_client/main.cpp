@@ -94,10 +94,18 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						char buffer[128];
 						memset(buffer, 0, sizeof(buffer));
 						list_box.GetText(selected, buffer);
-						client->RequestUserIp(buffer, strlen(buffer));
-					//	HWND chat_hwnd = CreateDialog(hInstance, MAKEINTRESOURCE(IDD_CHAT), hwndDlg, (DLGPROC)ChatDlgProc);
-
-						DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_CHAT), NULL, (DLGPROC)ChatDlgProc, (LPARAM)buffer);
+						// 判断聊天对话框是否打开，已打开则不用在打开
+						map<string, HWND>::const_iterator it = chat_windows.find(buffer);
+						if (it == chat_windows.end())    // 打开好友聊天窗口
+						{
+							// HIT: 在未加入判断时，不能正确将服务端响应的数据传送到聊天对话框中
+							client->RequestUserIp(buffer, strlen(buffer));
+							DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_CHAT), NULL, (DLGPROC)ChatDlgProc, (LPARAM)buffer);
+						}
+						else 
+						{
+							BringWindowToTop(it->second);    // 将当前选中好友窗口移到顶层
+						}
 					}
 					break;
 				}
@@ -110,9 +118,30 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			return TRUE;
 		}
 	case WM_CLOSE:
-		client->CloseSocket();
-		EndDialog(hwndDlg, 0);
-		return TRUE;
+		{
+			map<string, HWND>::const_iterator it = chat_windows.begin();
+			if (it == chat_windows.end()) 
+			{
+				if (IDYES == MessageBox(hwndDlg, "是否退出聊天程序？", "网络聊天程序", MB_YESNO))
+				{
+					client->CloseSocket();
+					EndDialog(hwndDlg, 0);
+				}
+			} 
+			else 
+			{
+				if (IDYES == MessageBox(hwndDlg, "是否关闭所有聊天窗口并退出？", "网络聊天程序", MB_YESNO))
+				{
+					while (it != chat_windows.end())
+					{
+						SendMessage((it++)->second, WM_CLOSE, 0, 0);
+					}
+					client->CloseSocket();
+					EndDialog(hwndDlg, 0);
+				}
+			}
+			return TRUE;
+		}
 	}
 	return FALSE;
 }
@@ -153,7 +182,7 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 			map<string, HWND>::const_iterator it = chat_windows.find(user_name);
 			if (it == chat_windows.end()) 
 			{
-				ret = false;
+				return false;
 				break;
 			}
 			
@@ -161,5 +190,5 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 			break;
 		}
 	}
-	return ret;
+	return true;
 }

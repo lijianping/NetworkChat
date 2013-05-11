@@ -179,7 +179,6 @@ DWORD __stdcall _Recvfrom(LPVOID lpParam)
 			//int n = ::WSAGetLastError();
 			break;
 		}
-
 	}
 	return 0;
 }
@@ -202,9 +201,9 @@ DWORD __stdcall _Recv(LPVOID lpParam)
 	unsigned long ul=1;
 	::ioctlsocket(my_socket->communicate_, FIONBIO, (unsigned long* )&ul);
 	char buff[4096];
-	memset(buff, 0, sizeof(buff));
 	while (true)
 	{
+		memset(buff, 0, sizeof(buff));
 		int ret_len = ::recv(my_socket->communicate_, buff, sizeof(buff), 0);
 		if (ret_len > 0)
 		{
