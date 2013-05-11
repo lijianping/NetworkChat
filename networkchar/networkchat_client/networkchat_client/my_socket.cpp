@@ -46,7 +46,7 @@ void MySocket::ConnectSever(const char *server_ip,
 	CreateSocket();
 	if (-1 == ::connect(communicate_, (sockaddr *)&server_addr_, sizeof(server_addr_)))
 		LTHROW(ERR_CONNECT)
-	TCP_thread_ = ::CreateThread(NULL, 0, _Recv, this, 0, NULL);
+	CreateTCPReadThread();
 }
 
 
@@ -71,7 +71,7 @@ void MySocket::CreateSocket(bool is_tcp /* = true */)
 
 void MySocket::CloseSocket()
 {
-	//::WaitForSingleObject(TCP_thread_, 0);
+	SetTCPEvent();
 	is_exit_ = true;
 
 }
@@ -85,8 +85,10 @@ int MySocket::Send(const char *message, const unsigned int len)
 
 void MySocket::RequestUserList() 
 {
-	if (0 == Send(user_name_.c_str(), user_name_.length()))
-		LTHROW(ERR_REQUEST_USER_LIST)
+	if (SOCKET_ERROR != Send(user_name_.c_str(), user_name_.length())) {
+		SetTCPEvent();
+	}
+	LTHROW(ERR_REQUEST_USER_LIST)
 }
 
 void MySocket::RequestUserIp(const char *user_name, const int len)
@@ -100,8 +102,19 @@ void MySocket::RequestUserIp(const char *user_name, const int len)
 	strncpy_s(request_ip->user_name, user_name_.c_str(), user_name_.length());
 	strncpy(request_ip->data(), user_name, len);
 	// TODO: 错误处理
-	Send(buff, sizeof(MSG_INFO) + len);
+	if (SOCKET_ERROR != Send(buff, sizeof(MSG_INFO) + len)) {
+		SetTCPEvent();
+	}
 	delete [] buff;
+}
+
+/*
+ * @ brief: 触发TCP事件对象
+ * @ return: 若成功返回true，否则返回false
+ **/
+bool MySocket::SetTCPEvent()
+{
+	return (TRUE == SetEvent(TCP_event_));
 }
 
 void MySocket::UserLogin()
@@ -112,7 +125,9 @@ void MySocket::UserLogin()
 	msg->type = MT_CONNECT_USERINFO;
 	msg->addr = local_ip_.S_un.S_addr;
 	strncpy_s(msg->user_name, user_name_.c_str(), user_name_.length());
-	Send(buf, sizeof(buf));
+	if (SOCKET_ERROR != Send(buf, sizeof(buf))) {
+		SetTCPEvent();
+	}
 }
 
 //////////////////////////////////////////////////////////////////
@@ -147,6 +162,16 @@ bool MySocket::JoinGroup()
 	return true;
 }
 
+/*
+ * @ brief: 创建TCP数据接收线程
+ **/
+void MySocket::CreateTCPReadThread() 
+{
+	// 创建一个事件对象，并设置为自动重置，且未触发
+	TCP_event_ = CreateEvent(NULL, FALSE, FALSE, NULL);
+	TCP_thread_ = ::CreateThread(NULL, 0, _Recv, this, 0, NULL);
+}
+
 DWORD __stdcall _Recvfrom(LPVOID lpParam)
 {
 	MySocket *pMySocket=(MySocket*)lpParam;
@@ -157,11 +182,18 @@ DWORD __stdcall _Recvfrom(LPVOID lpParam)
 	// 绑定端口
 	sockaddr_in si;
 	si.sin_family = AF_INET;
-	si.sin_port = ::ntohs(5000);
+	si.sin_port = 0;
 	//TODO:端口是否重用
 	si.sin_addr.S_un.S_addr = INADDR_ANY;
 	int nAddrLen = sizeof(si);
 	::bind(pMySocket->read_udp_, (sockaddr*)&si, sizeof(si));
+	int len = sizeof(si);
+	getsockname(pMySocket->read_udp_, (sockaddr *)&si, &len);
+#ifdef _DEBUG
+	char port[64];
+	sprintf_s(port, "bind udp -> addr: %s port: %d", inet_ntoa(si.sin_addr), ::ntohs(si.sin_port));
+	MessageBox(NULL, port, "Debug", MB_ICONINFORMATION);
+#endif
 	pMySocket->JoinGroup();
 	char buf[4096]={0};
 	//TODO:用户缓冲
@@ -184,11 +216,10 @@ DWORD __stdcall _Recvfrom(LPVOID lpParam)
 }
 
 /*
- * 说明：
- *     TCP接收数据线程
- * 参数：
- *      lpParam [in] 此处为MySocket对象
- */
+ * @ brief: 接收TCP数据
+ * @ param: lpParam [in] MySocket类
+ * @ return: 成功退出返回0，否则返回-1
+ **/
 DWORD __stdcall _Recv(LPVOID lpParam)
 {
 	MySocket *my_socket = (MySocket *)lpParam;
@@ -201,17 +232,16 @@ DWORD __stdcall _Recv(LPVOID lpParam)
 	unsigned long ul=1;
 	//::ioctlsocket(my_socket->communicate_, FIONBIO, (unsigned long* )&ul);
 	char buff[4096];
-	while (true)
+	while (!my_socket->is_exit_)
 	{
+		WaitForSingleObject(my_socket->TCP_event_, INFINITE);
 		memset(buff, 0, sizeof(buff));
 		int ret_len = ::recv(my_socket->communicate_, buff, sizeof(buff), 0);
 		if (ret_len > 0)
 		{
 			SendMessage(my_socket->main_hwnd, WM_CHATMSG, 0, (LPARAM)buff);
-		}
-		if (my_socket->is_exit_)
-		{
-			break;
+		} else {
+			my_socket->SetTCPEvent();
 		}
 	}
 	::closesocket(my_socket->communicate_);
