@@ -25,6 +25,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 {
 	static HINSTANCE hInstance;
+	static char user_name[64] = {0};
 	switch (uMsg) 
 	{
 	case WM_INITDIALOG:
@@ -37,7 +38,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				SendMessage(hwndDlg, WM_SETICON, ICON_SMALL, (LPARAM)main_icon);
 				SendMessage(hwndDlg, WM_SETICON, ICON_BIG, (LPARAM)main_icon);
 			}
-			SendDlgItemMessage(hwndDlg, IDC_FRIEND_LIST, LB_ADDSTRING, 0, (LPARAM)"sele");
+			//SendDlgItemMessage(hwndDlg, IDC_FRIEND_LIST, LB_ADDSTRING, 0, (LPARAM)"sele");
 			return TRUE;
 		}
 	case WM_COMMAND:
@@ -47,7 +48,6 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			case IDC_CONNECT_SERVER:
 				{
 					// get user name
-					char user_name[256];
 					memset(user_name, 0, sizeof(user_name));
 					if (0 == GetWindowText(GetDlgItem(hwndDlg, IDC_USER_NAME), user_name, sizeof(user_name))) 
 					{
@@ -69,7 +69,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					try {
 						client->InitSocketLib();
 						client->ConnectSever(server_ip);
-						//TODO:增加UDP，tcp接收线程
+						//TODO:增加UDP接收线程
 						MessageBox(hwndDlg, "Connect server succeed!", "Hit", MB_ICONINFORMATION);
 						client->UserLogin();
 					} catch (Err &err) {
@@ -94,12 +94,19 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						char buffer[128];
 						memset(buffer, 0, sizeof(buffer));
 						list_box.GetText(selected, buffer);
-						// 判断聊天对话框是否打开，已打开则不用在打开
+						// 判断聊天对话框是否打开，已打开则不用再打开
 						map<string, HWND>::const_iterator it = chat_windows.find(buffer);
 						if (it == chat_windows.end())    // 打开好友聊天窗口
 						{
 							// HIT: 在未加入判断时，不能正确将服务端响应的数据传送到聊天对话框中
-							client->RequestUserIp(buffer, strlen(buffer));
+							//如果点击的用户是“群聊”,则不用发送查询Ip请求
+							if (strcmp(buffer, "群聊")!=0)
+							{
+							   client->RequestUserIp(buffer, strlen(buffer));
+							}
+							//把当前用户名追加在后面，再在聊天对话框里面解析出来
+							strcat_s(buffer, "/");
+							strcat_s(buffer, user_name);
 							DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_CHAT), NULL, (DLGPROC)ChatDlgProc, (LPARAM)buffer);
 						}
 						else 
@@ -161,6 +168,8 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 			string users(msg->data());
 			MyListBox list_box(GetDlgItem(hwnd, IDC_FRIEND_LIST), IDC_FRIEND_LIST);
 			list_box.DeleteAllString();
+			//默认添加一个“群聊”成员
+			list_box.AddString("群聊");
 			int start_pos = 0, end_pos = users.length();
 			while (start_pos < end_pos) 
 			{
@@ -173,6 +182,18 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 		}
 	case MT_MULTICASTING_TEXT: //多播的聊天信息
 		{
+			//判断多播聊天窗口是否打开，未打开则把消息写入文本
+			map<string,HWND>::const_iterator it_group = chat_windows.find("群聊");
+			if (it_group == chat_windows.end())
+			{
+				//TODO:写入文本
+				MessageBox(NULL,msg->data(), TEXT("收到群聊消息_xieruwenben"), MB_OK);
+			}
+			else
+			{
+				BringWindowToTop(it_group->second);
+				SendMessage(it_group->second, WM_GROUP_TALK, 0, (LPARAM)msg);
+			}
 			break; 
 		}
 	case MT_RESPOND_IP:     //响应ip请求
@@ -185,7 +206,6 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 				return false;
 				break;
 			}
-			
 			::SendMessage(it->second, WM_USER_IP, 0, (LPARAM)msg->data());
 			break;
 		}

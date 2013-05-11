@@ -14,6 +14,7 @@ public:
 	int GetCount();
 	int GetSelect();
 	int GetText(const int index, char *buff);
+	int AppendString(const char *data);
 
 protected:
 

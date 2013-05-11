@@ -46,3 +46,9 @@ int MyListBox::GetText(const int index, char *buff)
 {
 	return SendMessage(hwnd_, LB_GETTEXT, (WPARAM)index, (LPARAM)buff);
 }
+
+int MyListBox:: AppendString(const char *data)
+{
+	int count = GetCount();
+	return SendMessage(hwnd_, LB_INSERTSTRING, (WPARAM)count, (LPARAM)data);
+}

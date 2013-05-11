@@ -23,7 +23,7 @@ const enum MSG_TYPE {
 	
 	MT_CONNECT_USERINFO,                   //连接用户信息
 
-	MT_RESPOND_IP                        //响应Ip请求
+	MT_RESPOND_IP                         //响应Ip请求
 };
 // 64 bytes
 typedef struct MSG_INFO {
@@ -34,7 +34,7 @@ typedef struct MSG_INFO {
 	char *data() { return (char *)(this + 1); } // 数据域
 }*pMsgInfo;
 
-//用户信息结构体（用户名做map的key值，用户信息做value）
+//用户信息结构体
 typedef struct USER_INFO
 {
 	char user_name[48];

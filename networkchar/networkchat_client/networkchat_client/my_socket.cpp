@@ -199,7 +199,7 @@ DWORD __stdcall _Recv(LPVOID lpParam)
 	BOOL bReuse = TRUE;
 	::setsockopt(my_socket->communicate_, SOL_SOCKET, SO_REUSEADDR, (char*)&bReuse, sizeof(BOOL));
 	unsigned long ul=1;
-	::ioctlsocket(my_socket->communicate_, FIONBIO, (unsigned long* )&ul);
+	//::ioctlsocket(my_socket->communicate_, FIONBIO, (unsigned long* )&ul);
 	char buff[4096];
 	while (true)
 	{
@@ -215,6 +215,7 @@ DWORD __stdcall _Recv(LPVOID lpParam)
 		}
 	}
 	::closesocket(my_socket->communicate_);
+	return 0;
 }
 
 //‘› ±Œ¥ π”√

@@ -317,6 +317,19 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 			//TODO:基本与MT_CONNECT_USERINFO同
 			break; 
 		}
+	case MT_MULTICASTING_TEXT: //群聊消息
+		{
+#ifdef _DEBUG
+			cout <<"收到用户：" <<recv_message->user_name <<"发来的群聊消息" <<endl;
+#endif
+			map<SOCKET, USER_INFO>::iterator it_user;
+			//给每一个在线用户发送群聊信息
+			for (it_user = users.begin(); it_user != users.end(); ++it_user)
+			{
+				::send(it_user->first, (char *)recv_message, sizeof(MSG_INFO) + recv_message->data_length, 0);
+			}
+			break;
+		}
 		return true;
 	}
 	return false;
