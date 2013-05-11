@@ -12,7 +12,8 @@ static const char *errs[] =
 	"request user list failed",
 	"add to the multi board failed",
 	"user name is empty",
-	"my socket is empty"
+	"my socket is empty",
+	"set time out failed"
 };
 Err::Err(int errcode, const char *file, int line)
 {

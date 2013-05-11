@@ -125,6 +125,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				if (IDYES == MessageBox(hwndDlg, "是否退出聊天程序？", "网络聊天程序", MB_YESNO))
 				{
 					client->CloseSocket();
+					while (!client->IsThreadClosed()) {};
 					EndDialog(hwndDlg, 0);
 				}
 			} 
@@ -136,7 +137,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					{
 						SendMessage((it++)->second, WM_CLOSE, 0, 0);
 					}
-					client->CloseSocket();
+					while (!client->IsThreadClosed()) {};
 					EndDialog(hwndDlg, 0);
 				}
 			}

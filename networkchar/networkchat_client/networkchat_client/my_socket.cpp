@@ -4,7 +4,8 @@
 MySocket::MySocket()
 	: is_init_lib_(false),
 	  communicate_(INVALID_SOCKET),
-	  is_exit_(false)
+	  close_tcp_socket_(false),
+	  tcp_thread_exit_(false)
 {
 	InitSocketLib();
 	multi_addr_=inet_addr("234.5.6.7");
@@ -73,8 +74,15 @@ void MySocket::CreateSocket(bool is_tcp /* = true */)
 void MySocket::CloseSocket()
 {
 	SetTCPEvent();
-	is_exit_ = true;
+	close_tcp_socket_ = true;
+}
 
+/*
+ * @ brief: 是否所有线程已正常退出
+ * @ return: 若是返回true
+ **/
+bool MySocket::IsThreadClosed() {
+	return tcp_thread_exit_;
 }
 
 int MySocket::Send(const char *message, const unsigned int len) 
@@ -196,6 +204,14 @@ void MySocket::CreateTCPReadThread()
 	TCP_thread_ = ::CreateThread(NULL, 0, _Recv, this, 0, NULL);
 }
 
+bool MySocket::SetTimeOut(SOCKET sock, int time_out, bool is_receive /* = true */)
+{
+	int ret = ::setsockopt(sock, SOL_SOCKET, is_receive ? SO_RCVTIMEO : SO_SNDTIMEO,\
+		                   (char *)&time_out, sizeof(int));
+	if (ret == SOCKET_ERROR)
+		LTHROW(ERR_SET_TIME_OUT)
+	return true;
+}
 DWORD __stdcall _Recvfrom(LPVOID lpParam)
 {
 	MySocket *pMySocket=(MySocket*)lpParam;
@@ -236,22 +252,27 @@ DWORD __stdcall _Recv(LPVOID lpParam)
 	}
 	BOOL bReuse = TRUE;
 	::setsockopt(my_socket->communicate_, SOL_SOCKET, SO_REUSEADDR, (char*)&bReuse, sizeof(BOOL));
-	unsigned long ul=1;
-	::ioctlsocket(my_socket->communicate_, FIONBIO, (unsigned long* )&ul);
+// 	unsigned long ul=1;
+// 	::ioctlsocket(my_socket->communicate_, FIONBIO, (unsigned long* )&ul);
+    my_socket->SetTimeOut(my_socket->communicate_, 5 * 1000);
 	char buff[4096];
-	while (!my_socket->is_exit_)
+	my_socket->tcp_thread_exit_ = false;
+	while (!my_socket->close_tcp_socket_)
 	{
-		WaitForSingleObject(my_socket->TCP_event_, INFINITE);
+	//	WaitForSingleObject(my_socket->TCP_event_, INFINITE);
 		memset(buff, 0, sizeof(buff));
 		int ret_len = ::recv(my_socket->communicate_, buff, sizeof(buff), 0);
 		if (ret_len > 0)
 		{
 			SendMessage(my_socket->main_hwnd, WM_CHATMSG, 0, (LPARAM)buff);
-		} else {
-			my_socket->SetTCPEvent();
 		}
+// 		else
+// 		{
+// 			my_socket->SetTCPEvent();
+// 		}
 	}
 	::closesocket(my_socket->communicate_);
+	my_socket->tcp_thread_exit_ = true;
 	return 0;
 }
 

@@ -227,6 +227,7 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 					  sizeof(recv_message->user_name));
 			sockaddr_in *remote = (sockaddr_in *)recv_message->data();
 			users[current_socket].addr.sin_port = remote->sin_port;       // 获取用户UDP绑定的端口
+			
 #ifdef _DEBUG
 			cout <<"Current Connect User: " <<recv_message->user_name \
 				 <<" length: " << strlen(recv_message->user_name)<<endl;
