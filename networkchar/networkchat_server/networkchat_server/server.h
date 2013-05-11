@@ -12,11 +12,12 @@ using namespace std;
 struct USER_INFO
 {
 	char user_name[48];
-	sockaddr_in addr;
+	sockaddr_in addr;        // 该结构用于存放用户ip地址以及udp协议绑定的端口号
 }*pUSER_INFO;
 
 //消息类型
 const enum MSG_TYPE {
+
 	MT_MULTICASTING_USERINFO = 1,         //多播在线用户信息
 
 	MT_MULTICASTING_TEXT,                 //多播聊天信息

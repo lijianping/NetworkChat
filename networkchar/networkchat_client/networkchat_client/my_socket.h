@@ -61,6 +61,7 @@ public:
 	inline void set_main_hwnd(HWND hwnd);
 
 protected:
+	void BindUDP();
 	void GetLocalAddress();
 	bool JoinGroup();
 	void CreateTCPReadThread();

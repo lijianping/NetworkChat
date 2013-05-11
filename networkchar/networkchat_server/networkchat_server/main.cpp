@@ -125,7 +125,7 @@ LRESULT CALLBACK NetworkProc(HWND hwnd,	UINT uMsg, WPARAM wParam, LPARAM lParam)
 					cout <<"Port: " <<::ntohs(remote_addr.sin_port) <<endl;
 					// 增加登录用户的地址信息
 					USER_INFO user;
-					user.addr = remote_addr;    
+					user.addr = remote_addr;  // 获取用户的ip地址  
 					users.insert(pair<SOCKET, USER_INFO>(client, user));
 					//
 					break;
@@ -146,7 +146,8 @@ LRESULT CALLBACK NetworkProc(HWND hwnd,	UINT uMsg, WPARAM wParam, LPARAM lParam)
 #endif
 					char szText[1024];
 					memset(szText, 0, sizeof(szText));
-					if (::recv(s, szText, sizeof(szText),0)<0)
+					int len = ::recv(s, szText, sizeof(szText),0);
+					if (0 == len || SOCKET_ERROR == len)
 					{
 						closesocket(s);
 					}
@@ -220,11 +221,16 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 	{
 	case MT_CONNECT_USERINFO://连接用户信息
 		{
-		    cout <<"连接请求" <<endl;
 			// 增加用户名
-			strncpy_s(users[current_socket].user_name, recv_message->user_name, sizeof(recv_message->user_name));  
+			strncpy_s(users[current_socket].user_name, \
+				      recv_message->user_name, \
+					  sizeof(recv_message->user_name));
+			sockaddr_in *remote = (sockaddr_in *)recv_message->data();
+			users[current_socket].addr.sin_port = remote->sin_port;       // 获取用户UDP绑定的端口
 #ifdef _DEBUG
-			cout <<"Current Connect User: " <<recv_message->user_name  <<" length: " << strlen(recv_message->user_name)<<endl;
+			cout <<"Current Connect User: " <<recv_message->user_name \
+				 <<" length: " << strlen(recv_message->user_name)<<endl;
+			cout <<"UDP addr: " <<inet_ntoa(users[current_socket].addr.sin_addr) <<" UDP port: " <<::ntohs(remote->sin_port) <<endl;
 #endif
 			cout <<endl;
 			cout <<users[current_socket].user_name <<" sign in at " <<GetTime() <<endl;
