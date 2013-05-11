@@ -218,6 +218,7 @@ DWORD __stdcall _Recv(LPVOID lpParam)
 	::closesocket(my_socket->communicate_);
 }
 
+//‘› ±Œ¥ π”√
 bool MySocket::DispatchMsg(char* recv_buffer, SOCKET current_socket)
 {
 	MSG_INFO *recv_message=(MSG_INFO *)recv_buffer;

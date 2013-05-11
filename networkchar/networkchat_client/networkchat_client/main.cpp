@@ -156,6 +156,7 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 				ret = false;
 				break;
 			}
+			
 			::SendMessage(it->second, WM_USER_IP, 0, (LPARAM)msg->data());
 			break;
 		}

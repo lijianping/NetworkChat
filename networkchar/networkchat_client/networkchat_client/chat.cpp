@@ -27,6 +27,9 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 			pUserInfo user = (pUserInfo)lParam;
 #ifdef _DEBUG
 			MessageBox(hChatDlg, user->user_name, "Debug", MB_ICONINFORMATION);
+			char szPort[16]={0};
+			sprintf(szPort,"port:%d", ntohs(user->addr.sin_port));
+			MessageBox(hChatDlg, szPort, "Debug", MB_ICONINFORMATION);
 			MessageBox(hChatDlg, ::inet_ntoa(user->addr.sin_addr), "Debug", MB_ICONINFORMATION);
 #endif
 			return TRUE;
