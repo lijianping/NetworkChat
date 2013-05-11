@@ -230,7 +230,7 @@ DWORD __stdcall _Recv(LPVOID lpParam)
 	BOOL bReuse = TRUE;
 	::setsockopt(my_socket->communicate_, SOL_SOCKET, SO_REUSEADDR, (char*)&bReuse, sizeof(BOOL));
 	unsigned long ul=1;
-	//::ioctlsocket(my_socket->communicate_, FIONBIO, (unsigned long* )&ul);
+//	::ioctlsocket(my_socket->communicate_, FIONBIO, (unsigned long* )&ul);
 	char buff[4096];
 	while (!my_socket->is_exit_)
 	{
@@ -240,6 +240,7 @@ DWORD __stdcall _Recv(LPVOID lpParam)
 		if (ret_len > 0)
 		{
 			SendMessage(my_socket->main_hwnd, WM_CHATMSG, 0, (LPARAM)buff);
+			my_socket->SetTCPEvent();
 		} else {
 			my_socket->SetTCPEvent();
 		}
