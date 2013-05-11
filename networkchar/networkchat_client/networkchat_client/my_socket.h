@@ -50,7 +50,7 @@ public:
 	void ConnectSever(const char *server_ip, const unsigned short port = 4567);
 	int Send(const char *message, const unsigned int len);
 	void CreateSocket(bool is_tcp = true);
-	
+	bool IsThreadClosed();
 	void CloseSocket();
 	void RequestUserList();
 	void RequestUserIp(const char *user_name,  const int len);
@@ -65,6 +65,7 @@ protected:
 	void GetLocalAddress();
 	bool JoinGroup();
 	void CreateTCPReadThread();
+	bool SetTimeOut(SOCKET sock, int time_out, bool is_receive = true);
 
 private:
 	in_addr local_ip_;
@@ -77,10 +78,11 @@ private:
 	unsigned short multi_port;    //多播端口
 	std::string user_name_;
 	HWND main_hwnd;               //
-	HANDLE thread_handle;            //线程句柄
+	HANDLE thread_handle;         //线程句柄
 	HANDLE TCP_thread_;
 	HANDLE TCP_event_;
-	bool is_exit_;         
+	bool close_tcp_socket_;
+	bool tcp_thread_exit_;
 	friend DWORD __stdcall _Recvfrom(LPVOID lpParam);
 	friend DWORD __stdcall _Recv(LPVOID lpParam);
 	bool DispatchMsg(char* recv_buffer, SOCKET current_socket);

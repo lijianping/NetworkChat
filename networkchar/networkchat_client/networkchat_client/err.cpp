@@ -13,7 +13,8 @@ static const char *errs[] =
 	"add to the multi board failed",
 	"user name is empty",
 	"my socket is empty",
-	"open save msg text file faild"
+	"open save msg text file faild",
+	"set time out failed"
 };
 Err::Err(int errcode, const char *file, int line)
 {
