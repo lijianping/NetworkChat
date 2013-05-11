@@ -2,6 +2,7 @@
 #include "my_socket.h"
 #include "my_list_box.h"
 #include "chat.h"
+#include "save_msg.h"
 #include <stdio.h>
 #include <string>
 #include <map>
@@ -9,10 +10,11 @@ using namespace std;
 
 MySocket *client;
 map<std::string, HWND> chat_windows;
-
+char current_user_name[64] = {0};
 bool HandleMsg(HWND hwnd, MSG_INFO * msg);
 
 INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
@@ -25,7 +27,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 {
 	static HINSTANCE hInstance;
-	static char user_name[64] = {0};
 	switch (uMsg) 
 	{
 	case WM_INITDIALOG:
@@ -48,13 +49,13 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			case IDC_CONNECT_SERVER:
 				{
 					// get user name
-					memset(user_name, 0, sizeof(user_name));
-					if (0 == GetWindowText(GetDlgItem(hwndDlg, IDC_USER_NAME), user_name, sizeof(user_name))) 
+					memset(current_user_name, 0, sizeof(current_user_name));
+					if (0 == GetWindowText(GetDlgItem(hwndDlg, IDC_USER_NAME), current_user_name, sizeof(current_user_name))) 
 					{
 						MessageBox(hwndDlg, "User Name can not be empty!", "HIT", MB_ICONINFORMATION | MB_OK);
 						return FALSE;
 					}
-					client->set_user_name(user_name);
+					client->set_user_name(current_user_name);
 					// get server ip address
 					char server_ip[16];
 					memset(server_ip, 0, sizeof(server_ip));
@@ -69,9 +70,10 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					try {
 						client->InitSocketLib();
 						client->ConnectSever(server_ip);
-						//TODO:增加UDP接收线程
 						MessageBox(hwndDlg, "Connect server succeed!", "Hit", MB_ICONINFORMATION);
 						client->UserLogin();
+						//TODO:增加UDP接收线程
+
 					} catch (Err &err) {
 						MessageBox(hwndDlg, err.what(), "Error!", MB_ICONINFORMATION);
 						return FALSE;
@@ -106,7 +108,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 							}
 							//把当前用户名追加在后面，再在聊天对话框里面解析出来
 							strcat_s(buffer, "/");
-							strcat_s(buffer, user_name);
+							strcat_s(buffer, current_user_name);
 							DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_CHAT), NULL, (DLGPROC)ChatDlgProc, (LPARAM)buffer);
 						}
 						else 
@@ -186,7 +188,19 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 			map<string,HWND>::const_iterator it_group = chat_windows.find("群聊");
 			if (it_group == chat_windows.end())
 			{
-				//TODO:写入文本
+				std::string file_name;
+				file_name += msg->user_name;
+				file_name += "--";
+				file_name += current_user_name;
+				//保存发消息的用户名和时间
+				std::string user_name_time;
+				user_name_time += msg->user_name;
+				user_name_time += ' ';
+				user_name_time += GetTime();
+				SaveMsg save_msg(file_name.c_str());
+				save_msg.SaveMsgText(user_name_time.c_str());
+				
+				//TODO:保存消息
 				MessageBox(NULL,msg->data(), TEXT("收到群聊消息_xieruwenben"), MB_OK);
 			}
 			else

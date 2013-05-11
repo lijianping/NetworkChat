@@ -80,6 +80,7 @@
     <ClInclude Include="my_list_box.h" />
     <ClInclude Include="my_socket.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="save_msg.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="networkchat_client.rc" />
@@ -90,6 +91,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="my_list_box.cpp" />
     <ClCompile Include="my_socket.cpp" />
+    <ClCompile Include="save_msg.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="resources\chat.ico" />
