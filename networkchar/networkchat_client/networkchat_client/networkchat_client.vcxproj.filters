@@ -33,6 +33,9 @@
     <ClInclude Include="save_msg.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="rich_edit.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="networkchat_client.rc">
@@ -56,6 +59,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="save_msg.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="rich_edit.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

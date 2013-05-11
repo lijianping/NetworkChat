@@ -1,5 +1,6 @@
 #include "chat.h"
 #include "my_list_box.h"
+#include "rich_edit.h"
 #include "resource.h"
 
 extern MySocket *client;
@@ -21,6 +22,7 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 			//保存自己的用户名
 			strncpy_s(user_name, name_mark+1, length_buff - (name_mark - buff) - 1);
 			chat_windows.insert(pair<string, HWND>(remote_user.user_name, hChatDlg));
+			::SendMessage(GetDlgItem(hChatDlg, IDC_MESSAGE_RECORD), ES_WANTRETURN, 0, 0);
 			return TRUE;
 		}
 	case WM_COMMAND:
@@ -82,9 +84,28 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 				user_name_time += group_msg->user_name;
 				user_name_time += ' ';
 				user_name_time += GetTime();
-	    		MyListBox chat_record(GetDlgItem(hChatDlg, IDC_MESSAGE_RECORD), IDC_MESSAGE_RECORD);
-				chat_record.AppendString(user_name_time.c_str());
-				chat_record.AppendString((char *)group_msg->data());
+	    	//	MyListBox chat_record(GetDlgItem(hChatDlg, IDC_MESSAGE_RECORD), IDC_MESSAGE_RECORD);
+			//	chat_record.AppendString(user_name_time.c_str());
+			//	chat_record.AppendString((char *)group_msg->data());
+			    
+			//	::SendMessage(GetDlgItem(hChatDlg, IDC_MESSAGE_RECORD), EM_GETSEL, NULL, );
+				user_name_time += '\n';
+				user_name_time += group_msg->data();
+				user_name_time += '\n';
+				RichEdit rich_edit(GetDlgItem(hChatDlg, IDC_MESSAGE_RECORD), IDC_MESSAGE_RECORD);
+#ifdef _DEBUG
+				char temp[64];
+				sprintf_s(temp, "line count: %d", rich_edit.GetLineCount());
+				MessageBox(hChatDlg, temp, "Debug", MB_ICONINFORMATION);
+#endif
+				int tail = rich_edit.GetTail();
+				rich_edit.SetSel(tail+1, tail+1);
+				SendMessage(GetDlgItem(hChatDlg, IDC_MESSAGE_RECORD), WM_VSCROLL, SB_BOTTOM, 0);
+				::SendMessage(GetDlgItem(hChatDlg, IDC_MESSAGE_RECORD), EM_REPLACESEL, FALSE, (long)user_name_time.c_str());
+#ifdef _DEBUG
+				sprintf_s(temp, "line count: %d", rich_edit.GetLineCount());
+				MessageBox(hChatDlg, temp, "Debug", MB_ICONINFORMATION);
+#endif
 			return TRUE;
 		}
 	case WM_SINGLE_TALK:
@@ -98,7 +119,7 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 			char name[64];
 			memset(name, 0, sizeof(name));
 			GetWindowText(hChatDlg, name, sizeof(name));
-			chat_windows.erase(name);
+			chat_windows.erase(remote_user.user_name);
 			EndDialog(hChatDlg, 0);
 			return TRUE;
 		}
