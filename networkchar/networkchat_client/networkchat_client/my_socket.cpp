@@ -8,7 +8,8 @@ MySocket::MySocket()
 {
 	InitSocketLib();
 	multi_addr_=inet_addr("234.5.6.7");
-//	thread_handle = ::CreateThread(NULL, 0, _Recvfrom, this, 0, NULL);
+	BindUDP();
+	thread_handle = ::CreateThread(NULL, 0, _Recvfrom, this, 0, NULL);
 }
 
 
@@ -119,11 +120,13 @@ bool MySocket::SetTCPEvent()
 
 void MySocket::UserLogin()
 {
-	char buf[sizeof(MSG_INFO)];
+	char buf[sizeof(MSG_INFO) + sizeof(sockaddr_in)];
 	memset(buf, 0, sizeof(buf));
 	pMsgInfo msg = (pMsgInfo)buf;
 	msg->type = MT_CONNECT_USERINFO;
 	msg->addr = local_ip_.S_un.S_addr;
+	sockaddr_in *addr = (sockaddr_in *)&buf[sizeof(MSG_INFO)];
+	addr->sin_port = udp_addr_.sin_port;   // 当前用户UDP数据接收绑定的端口
 	strncpy_s(msg->user_name, user_name_.c_str(), user_name_.length());
 	if (SOCKET_ERROR != Send(buf, sizeof(buf))) {
 		SetTCPEvent();
@@ -133,6 +136,27 @@ void MySocket::UserLogin()
 //////////////////////////////////////////////////////////////////
 //////////////////      protected function      //////////////////
 //////////////////////////////////////////////////////////////////
+void MySocket::BindUDP()
+{
+	read_udp_=socket(AF_INET, SOCK_DGRAM, 0);
+	// 允许其它进程使用绑定的地址
+	BOOL bReuse = TRUE;
+	::setsockopt(read_udp_, SOL_SOCKET, SO_REUSEADDR, (char*)&bReuse, sizeof(BOOL));
+	// 绑定端口
+	sockaddr_in si;
+	si.sin_family = AF_INET;
+	si.sin_port = 0;
+	//TODO:端口是否重用
+	si.sin_addr.S_un.S_addr = INADDR_ANY;
+	::bind(read_udp_, (sockaddr*)&si, sizeof(si));
+	int len = sizeof(udp_addr_);
+	getsockname(read_udp_, (sockaddr *)&udp_addr_, &len);
+#ifdef _DEBUG
+	char port[64];
+	sprintf_s(port, "bind udp -> addr: %s port: %d", inet_ntoa(udp_addr_.sin_addr), ::ntohs(udp_addr_.sin_port));
+	MessageBox(NULL, port, "Debug", MB_ICONINFORMATION);
+#endif
+}
 
 void MySocket::GetLocalAddress()
 {
@@ -175,28 +199,11 @@ void MySocket::CreateTCPReadThread()
 DWORD __stdcall _Recvfrom(LPVOID lpParam)
 {
 	MySocket *pMySocket=(MySocket*)lpParam;
-	pMySocket->read_udp_=socket(AF_INET, SOCK_DGRAM, 0);
-	// 允许其它进程使用绑定的地址
-	BOOL bReuse = TRUE;
-	::setsockopt(pMySocket->read_udp_, SOL_SOCKET, SO_REUSEADDR, (char*)&bReuse, sizeof(BOOL));
-	// 绑定端口
-	sockaddr_in si;
-	si.sin_family = AF_INET;
-	si.sin_port = 0;
-	//TODO:端口是否重用
-	si.sin_addr.S_un.S_addr = INADDR_ANY;
-	int nAddrLen = sizeof(si);
-	::bind(pMySocket->read_udp_, (sockaddr*)&si, sizeof(si));
-	int len = sizeof(si);
-	getsockname(pMySocket->read_udp_, (sockaddr *)&si, &len);
-#ifdef _DEBUG
-	char port[64];
-	sprintf_s(port, "bind udp -> addr: %s port: %d", inet_ntoa(si.sin_addr), ::ntohs(si.sin_port));
-	MessageBox(NULL, port, "Debug", MB_ICONINFORMATION);
-#endif
 	pMySocket->JoinGroup();
 	char buf[4096]={0};
 	//TODO:用户缓冲
+	sockaddr_in si;
+	int nAddrLen = sizeof(si);
 	while (true)
 	{
 		int nRet = ::recvfrom(pMySocket->read_udp_, buf, sizeof(buf), 0, (sockaddr*)&si, &nAddrLen);
