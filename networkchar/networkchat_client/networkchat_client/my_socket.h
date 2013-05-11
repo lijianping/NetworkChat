@@ -50,9 +50,11 @@ public:
 	void ConnectSever(const char *server_ip, const unsigned short port = 4567);
 	int Send(const char *message, const unsigned int len);
 	void CreateSocket(bool is_tcp = true);
+	
 	void CloseSocket();
 	void RequestUserList();
 	void RequestUserIp(const char *user_name,  const int len);
+	bool SetTCPEvent();
 	void UserLogin();
 	inline SOCKET communicate() const;
 	inline void set_user_name(const std::string &user_name);
@@ -61,12 +63,14 @@ public:
 protected:
 	void GetLocalAddress();
 	bool JoinGroup();
+	void CreateTCPReadThread();
 
 private:
 	in_addr local_ip_;
 	sockaddr_in server_addr_;
 	SOCKET communicate_;          // 通信套接字
-	SOCKET read_udp_;           // 接收数据套接字
+	SOCKET read_udp_;             // 接收数据套接字
+	sockaddr_in udp_addr_;        // 监听UDP数据的地址
 	bool is_init_lib_;
 	unsigned long multi_addr_;    // 多播地址
 	unsigned short multi_port;    //多播端口
@@ -74,6 +78,7 @@ private:
 	HWND main_hwnd;               //
 	HANDLE thread_handle;            //线程句柄
 	HANDLE TCP_thread_;
+	HANDLE TCP_event_;
 	bool is_exit_;         
 	friend DWORD __stdcall _Recvfrom(LPVOID lpParam);
 	friend DWORD __stdcall _Recv(LPVOID lpParam);
