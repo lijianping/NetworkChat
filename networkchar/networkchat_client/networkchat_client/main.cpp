@@ -3,6 +3,7 @@
 #include "my_list_box.h"
 #include "chat.h"
 #include "save_msg.h"
+#include <io.h>
 #include <stdio.h>
 #include <string>
 #include <map>
@@ -11,6 +12,15 @@ using namespace std;
 MySocket *client;
 map<std::string, HWND> chat_windows;
 char current_user_name[64] = {0};
+/*
+ * @ brief: 打开文件
+ * @ param: in [in] 文件对象流
+ * @ param: file [in] 文件名称
+ * @ param: is_in [in] 打开方式，若为false则表示已写入形式打开（默认），否则为读入形式打开
+ * @ return: 文件对象流
+ **/
+fstream& open_file(fstream &in, const string &file, bool is_in = false);
+
 bool HandleMsg(HWND hwnd, MSG_INFO * msg);
 
 INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -96,20 +106,17 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						}
 						char buffer[128];
 						memset(buffer, 0, sizeof(buffer));
-						list_box.GetText(selected, buffer);
+						list_box.GetText(selected, buffer);    // 获取好友列表名称
 						// 判断聊天对话框是否打开，已打开则不用再打开
 						map<string, HWND>::const_iterator it = chat_windows.find(buffer);
 						if (it == chat_windows.end())    // 打开好友聊天窗口
 						{
 							// HIT: 在未加入判断时，不能正确将服务端响应的数据传送到聊天对话框中
 							//如果点击的用户是“群聊”,则不用发送查询Ip请求
-							if (strcmp(buffer, "群聊")!=0)
+							if (string(buffer) == string("群消息"))
 							{
 							   client->RequestUserIp(buffer, strlen(buffer));
 							}
-							//把当前用户名追加在后面，再在聊天对话框里面解析出来
-							strcat_s(buffer, "/");
-							strcat_s(buffer, current_user_name);
 							DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_CHAT), NULL, (DLGPROC)ChatDlgProc, (LPARAM)buffer);
 						}
 						else 
@@ -147,6 +154,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					{
 						SendMessage((it++)->second, WM_CLOSE, 0, 0);
 					}
+					client->CloseSocket();     
 					while (!client->IsThreadClosed()) {};
 					EndDialog(hwndDlg, 0);
 				}
@@ -173,7 +181,7 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 			MyListBox list_box(GetDlgItem(hwnd, IDC_FRIEND_LIST), IDC_FRIEND_LIST);
 			list_box.DeleteAllString();
 			//默认添加一个“群聊”成员
-			list_box.AddString("群聊");
+			list_box.AddString("群消息");
 			int start_pos = 0, end_pos = users.length();
 			while (start_pos < end_pos) 
 			{
@@ -187,23 +195,24 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 	case MT_MULTICASTING_TEXT: //多播的聊天信息
 		{
 			//判断多播聊天窗口是否打开，未打开则把消息写入文本
-			map<string,HWND>::const_iterator it_group = chat_windows.find("群聊");
+			map<string,HWND>::const_iterator it_group = chat_windows.find("群消息");
 			if (it_group == chat_windows.end())
 			{
 				std::string file_name;
 				file_name += msg->user_name;
-				file_name += "--";
-				file_name += current_user_name;
-				//保存发消息的用户名和时间
-				std::string user_name_time;
-				user_name_time += msg->user_name;
-				user_name_time += ' ';
-				user_name_time += GetTime();
-				SaveMsg save_msg(file_name.c_str());
-				save_msg.SaveMsgText(user_name_time.c_str());
-				
+				file_name += ".";
+				file_name += "notshow";
+				fstream out;
+				try {
+					open_file(out, file_name.c_str());
+				} catch (Err &err) {
+					MessageBox(hwnd, err.what(), "Error", MB_ICONERROR | MB_OK);
+					break;
+				}
+			    out <<msg->user_name <<endl;
+				out <<msg->data() <<endl;
 				//TODO:保存消息
-				MessageBox(NULL,msg->data(), TEXT("收到群聊消息_xieruwenben"), MB_OK);
+				MessageBox(hwnd, msg->data(), TEXT("收到群聊消息_xieruwenben"), MB_OK);
 			}
 			else
 			{
@@ -227,4 +236,14 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 		}
 	}
 	return true;
+}
+
+
+fstream& open_file(fstream &in, const string &file, bool is_in /* = false */) 
+{
+	in.close();
+	in.open(file.c_str(), ios::binary | ios::app | (is_in ? ios::out : ios::in));
+	if (!in.is_open())
+		LTHROW(ERR_FILE_OPEN_FAILD)
+	return in;
 }

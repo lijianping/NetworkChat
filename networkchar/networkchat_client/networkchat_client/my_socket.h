@@ -59,6 +59,7 @@ public:
 	inline SOCKET communicate() const;
 	inline void set_user_name(const std::string &user_name);
 	inline void set_main_hwnd(HWND hwnd);
+	inline std::string& user_name();
 
 protected:
 	void BindUDP();
@@ -83,6 +84,7 @@ private:
 	HANDLE TCP_event_;
 	bool close_tcp_socket_;
 	bool tcp_thread_exit_;
+	bool is_create_tcp_thread_;
 	friend DWORD __stdcall _Recvfrom(LPVOID lpParam);
 	friend DWORD __stdcall _Recv(LPVOID lpParam);
 	bool DispatchMsg(char* recv_buffer, SOCKET current_socket);
@@ -102,4 +104,10 @@ void  MySocket:: set_main_hwnd(HWND hwnd)
 {
 	main_hwnd = hwnd;
 }
+
+std::string& MySocket::user_name()
+{
+	return user_name_;
+}
+
 #endif

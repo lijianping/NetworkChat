@@ -38,3 +38,10 @@ void RichEdit::SetSel(int start, int end)
 {
 	SendMessage(hwnd_, EM_SETSEL, start, end);
 }
+
+void RichEdit::AppendText(const std::string &text)
+{
+	const int tail = GetTail();
+	SetSel(tail + 1, tail + 1);
+	::SendMessage(hwnd_, EM_REPLACESEL, FALSE, (long)text.c_str());
+}

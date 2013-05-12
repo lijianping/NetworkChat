@@ -5,7 +5,8 @@ MySocket::MySocket()
 	: is_init_lib_(false),
 	  communicate_(INVALID_SOCKET),
 	  close_tcp_socket_(false),
-	  tcp_thread_exit_(false)
+	  tcp_thread_exit_(false),
+	  is_create_tcp_thread_(false)
 {
 	InitSocketLib();
 	multi_addr_=inet_addr("234.5.6.7");
@@ -49,6 +50,7 @@ void MySocket::ConnectSever(const char *server_ip,
 	if (-1 == ::connect(communicate_, (sockaddr *)&server_addr_, sizeof(server_addr_)))
 		LTHROW(ERR_CONNECT)
 	CreateTCPReadThread();
+	is_create_tcp_thread_ = true;
 }
 
 
@@ -82,7 +84,10 @@ void MySocket::CloseSocket()
  * @ return: 若是返回true
  **/
 bool MySocket::IsThreadClosed() {
-	return tcp_thread_exit_;
+	if (is_create_tcp_thread_){
+		return tcp_thread_exit_;
+	}
+	return !is_create_tcp_thread_;
 }
 
 int MySocket::Send(const char *message, const unsigned int len) 
@@ -200,7 +205,7 @@ bool MySocket::JoinGroup()
 void MySocket::CreateTCPReadThread() 
 {
 	// 创建一个事件对象，并设置为自动重置，且未触发
-	TCP_event_ = CreateEvent(NULL, FALSE, FALSE, NULL);
+//	TCP_event_ = CreateEvent(NULL, FALSE, FALSE, NULL);
 	TCP_thread_ = ::CreateThread(NULL, 0, _Recv, this, 0, NULL);
 }
 
@@ -252,7 +257,7 @@ DWORD __stdcall _Recv(LPVOID lpParam)
 	}
 	BOOL bReuse = TRUE;
 	::setsockopt(my_socket->communicate_, SOL_SOCKET, SO_REUSEADDR, (char*)&bReuse, sizeof(BOOL));
-    my_socket->SetTimeOut(my_socket->communicate_, 2 * 1000);
+    my_socket->SetTimeOut(my_socket->communicate_, 1000);
 	char buff[4096];
 	my_socket->tcp_thread_exit_ = false;
 	while (!my_socket->close_tcp_socket_)
@@ -264,10 +269,6 @@ DWORD __stdcall _Recv(LPVOID lpParam)
 		{
 			SendMessage(my_socket->main_hwnd, WM_CHATMSG, 0, (LPARAM)buff);
 		} 
-// 		else
-// 		{
-// 			my_socket->SetTCPEvent();
-// 		}
 	}
 	::closesocket(my_socket->communicate_);
 	my_socket->tcp_thread_exit_ = true;
