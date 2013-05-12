@@ -1,5 +1,6 @@
 #include "chat.h"
 #include "my_list_box.h"
+#include "rich_edit.h"
 #include "resource.h"
 
 extern MySocket *client;
@@ -7,7 +8,6 @@ extern map<std::string, HWND> chat_windows;
 BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	static USER_INFO remote_user;
-	static char user_name[64] = {0};
 	switch(uMsg)
 	{
 	case WM_INITDIALOG:
@@ -18,9 +18,9 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 			char *name_mark = strchr(buff, '/');
 			//保存聊天对象的用户名
 			strncpy_s(remote_user.user_name, buff, name_mark -  buff);
-			//保存自己的用户名
-			strncpy_s(user_name, name_mark+1, length_buff - (name_mark - buff) - 1);
+			
 			chat_windows.insert(pair<string, HWND>(remote_user.user_name, hChatDlg));
+			::SendMessage(GetDlgItem(hChatDlg, IDC_MESSAGE_RECORD), ES_WANTRETURN, 0, 0);
 			return TRUE;
 		}
 	case WM_COMMAND:
@@ -36,7 +36,7 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 					//构造发送包，发送聊天数据
 					char send_buff[sizeof(MSG_INFO)+1024];
 					pMsgInfo send_msg = (pMsgInfo)send_buff;
-					strncpy_s(send_msg->user_name, user_name, strlen(user_name));
+					strncpy_s(send_msg->user_name, client->UserName().c_str(), strlen(client->UserName().c_str()));
 					send_msg->data_length = strlen(send_text);
 					strncpy(send_msg->data(), send_text, strlen(send_text));
 					//判断发送的消息类型，群消息用tcp发给服务器，私聊消息用UDP发送
@@ -48,8 +48,14 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 					}
 					else
 					{
-						//TODO:发送
-						MessageBox(hChatDlg, TEXT("私聊消息"), TEXT("发送"),0);
+						send_msg->type = MT_SINGLE_TALK;
+						char szRemote[64];
+						sprintf(szRemote,"ip:%s,port:%d", inet_ntoa(remote_user.addr.sin_addr),ntohs(remote_user.addr.sin_port));
+						MessageBox(hChatDlg, szRemote, "远端地址",0);
+						int send_len = client->SendTo(send_buff, sizeof(MSG_INFO)+strlen(send_text), &remote_user.addr);
+						char temp[32];
+						sprintf(temp, "send length: %d", send_len);
+						MessageBox(hChatDlg, temp, TEXT("发送"),0);
 					}
 					break;
 				}
@@ -63,14 +69,20 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 		}
 	case WM_USER_IP:
 		{
-			pUserInfo user = (pUserInfo)lParam;
+			pUserInfo recv_user = (pUserInfo)lParam;
 #ifdef _DEBUG
-			MessageBox(hChatDlg, user->user_name, "Debug", MB_ICONINFORMATION);
+			MessageBox(hChatDlg, recv_user->user_name, "Debug", MB_ICONINFORMATION);
 			char szPort[16]={0};
-			sprintf(szPort,"port:%d", ntohs(user->addr.sin_port));
+			sprintf(szPort,"port:%d", ntohs(recv_user->addr.sin_port));
 			MessageBox(hChatDlg, szPort, "Debug", MB_ICONINFORMATION);
-			MessageBox(hChatDlg, ::inet_ntoa(user->addr.sin_addr), "Debug", MB_ICONINFORMATION);
+			MessageBox(hChatDlg, ::inet_ntoa(recv_user->addr.sin_addr), "Debug", MB_ICONINFORMATION);
 #endif
+			//保存远程用户信息
+			strncpy_s(remote_user.user_name, recv_user->user_name, strlen(recv_user->user_name));
+			remote_user.addr.sin_family = AF_INET;
+			remote_user.addr.sin_port = recv_user->addr.sin_port;
+			remote_user.addr.sin_addr = recv_user->addr.sin_addr;
+
 			return TRUE;
 		}
 	case WM_GROUP_TALK:
@@ -82,15 +94,51 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 				user_name_time += group_msg->user_name;
 				user_name_time += ' ';
 				user_name_time += GetTime();
-	    		MyListBox chat_record(GetDlgItem(hChatDlg, IDC_MESSAGE_RECORD), IDC_MESSAGE_RECORD);
-				chat_record.AppendString(user_name_time.c_str());
-				chat_record.AppendString((char *)group_msg->data());
+				user_name_time += '\n';
+				user_name_time += group_msg->data();
+				user_name_time += '\n';
+				RichEdit rich_edit(GetDlgItem(hChatDlg, IDC_MESSAGE_RECORD), IDC_MESSAGE_RECORD);
+#ifdef _DEBUG
+				char temp[64];
+				sprintf_s(temp, "line count: %d", rich_edit.GetLineCount());
+				MessageBox(hChatDlg, temp, "Debug", MB_ICONINFORMATION);
+#endif
+				int tail = rich_edit.GetTail();
+				rich_edit.SetSel(tail+1, tail+1);
+				SendMessage(GetDlgItem(hChatDlg, IDC_MESSAGE_RECORD), WM_VSCROLL, SB_BOTTOM, 0);
+				::SendMessage(GetDlgItem(hChatDlg, IDC_MESSAGE_RECORD), EM_REPLACESEL, FALSE, (long)user_name_time.c_str());
+#ifdef _DEBUG
+				sprintf_s(temp, "line count: %d", rich_edit.GetLineCount());
+				MessageBox(hChatDlg, temp, "Debug", MB_ICONINFORMATION);
+#endif
 			return TRUE;
 		}
 	case WM_SINGLE_TALK:
 		{
 			MessageBox(hChatDlg, "收到私聊消息", "私聊", 0);
-			//TODO:
+			//显示发消息的用户名和时间
+			pMsgInfo single_talk_msg = (pMsgInfo)lParam;
+			std::string user_name_time;
+			user_name_time += single_talk_msg->user_name;
+			user_name_time += ' ';
+			user_name_time += GetTime();
+			user_name_time += '\n';
+			user_name_time += single_talk_msg->data();
+			user_name_time += '\n';
+			RichEdit rich_edit(GetDlgItem(hChatDlg, IDC_MESSAGE_RECORD), IDC_MESSAGE_RECORD);
+#ifdef _DEBUG
+			char temp[64];
+			sprintf_s(temp, "line count: %d", rich_edit.GetLineCount());
+			MessageBox(hChatDlg, temp, "Debug", MB_ICONINFORMATION);
+#endif
+			int tail = rich_edit.GetTail();
+			rich_edit.SetSel(tail+1, tail+1);
+			SendMessage(GetDlgItem(hChatDlg, IDC_MESSAGE_RECORD), WM_VSCROLL, SB_BOTTOM, 0);
+			::SendMessage(GetDlgItem(hChatDlg, IDC_MESSAGE_RECORD), EM_REPLACESEL, FALSE, (long)user_name_time.c_str());
+#ifdef _DEBUG
+			sprintf_s(temp, "line count: %d", rich_edit.GetLineCount());
+			MessageBox(hChatDlg, temp, "Debug", MB_ICONINFORMATION);
+#endif
 			return TRUE;
 		}
 	case  WM_CLOSE:

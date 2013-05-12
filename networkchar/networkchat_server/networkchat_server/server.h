@@ -22,6 +22,8 @@ const enum MSG_TYPE {
 
 	MT_MULTICASTING_TEXT,                 //多播聊天信息
 
+	MT_SINGLE_TALK,                       //私聊信息
+
 	MT_REQUEST_CONNECT,                   //连接请求
 
 	MT_REQUEST_IP,                   //ip查询请求

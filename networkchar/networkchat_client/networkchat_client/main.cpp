@@ -10,7 +10,6 @@ using namespace std;
 
 MySocket *client;
 map<std::string, HWND> chat_windows;
-char current_user_name[64] = {0};
 bool HandleMsg(HWND hwnd, MSG_INFO * msg);
 
 INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -18,6 +17,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
+	LoadLibrary("riched20.dll");
 	client = new MySocket;
 	DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_DIALOG1), NULL, (DLGPROC)MainProc, (LPARAM)hInstance);
 	delete client;
@@ -49,6 +49,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			case IDC_CONNECT_SERVER:
 				{
 					// get user name
+					char current_user_name[64];
 					memset(current_user_name, 0, sizeof(current_user_name));
 					if (0 == GetWindowText(GetDlgItem(hwndDlg, IDC_USER_NAME), current_user_name, sizeof(current_user_name))) 
 					{
@@ -72,7 +73,6 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						client->ConnectSever(server_ip);
 						MessageBox(hwndDlg, "Connect server succeed!", "Hit", MB_ICONINFORMATION);
 						client->UserLogin();
-						//TODO:增加UDP接收线程
 
 					} catch (Err &err) {
 						MessageBox(hwndDlg, err.what(), "Error!", MB_ICONINFORMATION);
@@ -106,9 +106,6 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 							{
 							   client->RequestUserIp(buffer, strlen(buffer));
 							}
-							//把当前用户名追加在后面，再在聊天对话框里面解析出来
-							strcat_s(buffer, "/");
-							strcat_s(buffer, current_user_name);
 							DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_CHAT), NULL, (DLGPROC)ChatDlgProc, (LPARAM)buffer);
 						}
 						else 
@@ -134,7 +131,9 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				if (IDYES == MessageBox(hwndDlg, "是否退出聊天程序？", "网络聊天程序", MB_YESNO))
 				{
 					client->CloseSocket();
+					client->CloseUdpSocket();
 					while (!client->IsThreadClosed()) {};
+					while (!client->IsUdpThreadClosed()) {};
 					EndDialog(hwndDlg, 0);
 				}
 			} 
@@ -146,7 +145,10 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					{
 						SendMessage((it++)->second, WM_CLOSE, 0, 0);
 					}
+					client->CloseSocket();
+					client->CloseUdpSocket();
 					while (!client->IsThreadClosed()) {};
+					while (!client->IsUdpThreadClosed()) {};
 					EndDialog(hwndDlg, 0);
 				}
 			}
@@ -184,27 +186,24 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 			break;
 		}
 	case MT_MULTICASTING_TEXT: //多播的聊天信息
-		{
-			//判断多播聊天窗口是否打开，未打开则把消息写入文本
+		{	
+			std::string file_name;
+			file_name +=  "群聊";
+			file_name += "--";
+			file_name += client->UserName();
+			//文本保存发消息的用户名和时间
+			std::string user_name_time;
+			user_name_time += msg->user_name;
+			user_name_time += ' ';
+			user_name_time += GetTime();
+			SaveMsg save_user(file_name.c_str());
+			save_user.SaveMsgText(user_name_time.c_str());
+			SaveMsg save_text(file_name.c_str());
+			save_text.SaveMsgText(msg->data());
+			MessageBox(NULL,msg->data(), TEXT("收到群聊消息_写入文本"), MB_OK);
+			//如果群聊窗口已打开，则发送到此窗口
 			map<string,HWND>::const_iterator it_group = chat_windows.find("群聊");
-			if (it_group == chat_windows.end())
-			{
-				std::string file_name;
-				file_name +=  "群聊";
-				file_name += "--";
-				file_name += current_user_name;
-				//保存发消息的用户名和时间
-				std::string user_name_time;
-				user_name_time += msg->user_name;
-				user_name_time += ' ';
-				user_name_time += GetTime();
-				SaveMsg save_user(file_name.c_str());
-				save_user.SaveMsgText(user_name_time.c_str());
-				SaveMsg save_text(file_name.c_str());
-				save_text.SaveMsgText(msg->data());
-				MessageBox(NULL,msg->data(), TEXT("收到群聊消息_写入文本"), MB_OK);
-			}
-			else
+			if (it_group != chat_windows.end())
 			{
 				BringWindowToTop(it_group->second);
 				SendMessage(it_group->second, WM_GROUP_TALK, 0, (LPARAM)msg);
@@ -222,6 +221,31 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 				break;
 			}
 			::SendMessage(it->second, WM_USER_IP, 0, (LPARAM)msg->data());
+			break;
+		}
+	case MT_SINGLE_TALK:   //私聊信息
+		{
+			std::string file_name;
+			file_name +=  msg->user_name;
+			file_name += "--";
+			file_name += client->UserName();
+			//文本保存发消息的用户名和时间
+			std::string msg_user_text;
+			msg_user_text += msg->user_name;
+			msg_user_text += ' ';
+			msg_user_text += GetTime();
+			msg_user_text += '\n';
+			msg_user_text += msg->data();
+			SaveMsg save_user(file_name.c_str());
+			save_user.SaveMsgText(msg_user_text.c_str());
+			MessageBox(NULL,msg->data(), TEXT("收到私聊消息_写入文本"), MB_OK);
+			//如果与发来此消息的用户的聊天窗口已打开，则发送到此窗口
+			map<string,HWND>::const_iterator it_user_window = chat_windows.find(msg->user_name);
+			if (it_user_window != chat_windows.end())
+			{
+				BringWindowToTop(it_user_window->second);
+				SendMessage(it_user_window->second, WM_SINGLE_TALK, 0, (LPARAM)msg);
+			}
 			break;
 		}
 	}

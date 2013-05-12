@@ -115,7 +115,8 @@ LRESULT CALLBACK NetworkProc(HWND hwnd,	UINT uMsg, WPARAM wParam, LPARAM lParam)
 				{
 #ifdef _DEBUG
 					cout <<"FD_ACCEPT message" <<endl;
-#endif
+					cout <<"list:" <<s<<endl;
+#endif              
 					sockaddr_in remote_addr;
 					int remote_length = sizeof(remote_addr);
 					SOCKET client = ::accept(s, (SOCKADDR*)&remote_addr, &remote_length);
@@ -143,6 +144,7 @@ LRESULT CALLBACK NetworkProc(HWND hwnd,	UINT uMsg, WPARAM wParam, LPARAM lParam)
 #ifdef _DEBUG
 					cout <<endl;
 					cout <<"FD_READ message" <<endl;
+					cout << "s:" << s <<endl;
 #endif
 					char szText[1024];
 					memset(szText, 0, sizeof(szText));
@@ -336,6 +338,11 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 				::send(it_user->first, (char *)recv_message, sizeof(MSG_INFO) + recv_message->data_length, 0);
 			}
 			break;
+		}
+	default:
+		{
+		  cout <<"无法解析的消息类型" <<endl;
+		  break;
 		}
 		return true;
 	}

@@ -3,6 +3,8 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "networkchat_client", "networkchat_client\networkchat_client.vcxproj", "{E0DBDCD2-3BB1-4435-BEA2-F0E191A52023}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "networkchat_server", "..\networkchat_server\networkchat_server\networkchat_server.vcxproj", "{B146B4FA-BDF8-4337-A54B-71DF2E3946D6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -13,6 +15,10 @@ Global
 		{E0DBDCD2-3BB1-4435-BEA2-F0E191A52023}.Debug|Win32.Build.0 = Debug|Win32
 		{E0DBDCD2-3BB1-4435-BEA2-F0E191A52023}.Release|Win32.ActiveCfg = Release|Win32
 		{E0DBDCD2-3BB1-4435-BEA2-F0E191A52023}.Release|Win32.Build.0 = Release|Win32
+		{B146B4FA-BDF8-4337-A54B-71DF2E3946D6}.Debug|Win32.ActiveCfg = Debug|Win32
+		{B146B4FA-BDF8-4337-A54B-71DF2E3946D6}.Debug|Win32.Build.0 = Debug|Win32
+		{B146B4FA-BDF8-4337-A54B-71DF2E3946D6}.Release|Win32.ActiveCfg = Release|Win32
+		{B146B4FA-BDF8-4337-A54B-71DF2E3946D6}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
