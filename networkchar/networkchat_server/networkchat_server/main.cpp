@@ -35,8 +35,7 @@ int main()
 	wndclass.lpszClassName= "network";
 	if (!RegisterClass (&wndclass))
 	{
-		MessageBox ( NULL, TEXT ("This program requires Windows NT!"),
-			TEXT("error"), MB_ICONERROR);
+		cout <<"This program requires Windows NT!" <<endl;
 		return 0 ;
 	}
 
@@ -46,7 +45,7 @@ int main()
 					     NULL, NULL, NULL, NULL);
 	if (NULL==hwnd)
 	{
-		::MessageBox(NULL, TEXT("创建窗口失败"), TEXT("错误"), MB_ICONERROR);
+		cout <<"Create window failed." <<endl;
 		return -1;
 	}
 
@@ -54,15 +53,13 @@ int main()
 	WORD sockVersion = MAKEWORD(2, 2);
 	if(::WSAStartup(sockVersion, &wsaData)!=0)
 	{
-		printf("加载WINSOCK库失败！\n");
-		exit(0);
+		cout <<"Load WinSock lib failed." <<endl;
+		return -1;
 	}
 	const unsigned short nPort = 4567;
 	//创建监听套接字
 	SOCKET sListen = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-#ifdef _DEBUG
-	cout <<"listen socket: " <<(int)sListen <<endl;
-#endif
+	cout <<"Start running server..." <<endl;
 	sockaddr_in server_addr;
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_port = htons(nPort);
@@ -71,7 +68,7 @@ int main()
 	//绑定套接字到本地机器
 	if(::bind(sListen, (sockaddr*)&server_addr, sizeof(server_addr))==SOCKET_ERROR)
 	{
-		printf("绑定监听套接字失败\n");
+		cout <<"Bind listen socket failed." <<endl;
 		return -1;
 	}
 	//将套接字设为窗口通知消息类型
@@ -115,7 +112,8 @@ LRESULT CALLBACK NetworkProc(HWND hwnd,	UINT uMsg, WPARAM wParam, LPARAM lParam)
 				{
 #ifdef _DEBUG
 					cout <<"FD_ACCEPT message" <<endl;
-#endif
+					cout <<"list:" <<s<<endl;
+#endif              
 					sockaddr_in remote_addr;
 					int remote_length = sizeof(remote_addr);
 					SOCKET client = ::accept(s, (SOCKADDR*)&remote_addr, &remote_length);
@@ -143,6 +141,7 @@ LRESULT CALLBACK NetworkProc(HWND hwnd,	UINT uMsg, WPARAM wParam, LPARAM lParam)
 #ifdef _DEBUG
 					cout <<endl;
 					cout <<"FD_READ message" <<endl;
+					cout << "s:" << s <<endl;
 #endif
 					char szText[1024];
 					memset(szText, 0, sizeof(szText));
@@ -167,6 +166,7 @@ LRESULT CALLBACK NetworkProc(HWND hwnd,	UINT uMsg, WPARAM wParam, LPARAM lParam)
 					cout <<endl;
 					cout <<users[s].user_name <<" sign out at " <<GetTime() <<endl;
 					users.erase(s);   // 移出用户
+					::closesocket(s);
 					map<SOCKET, USER_INFO>::const_iterator it;
 					std::string user_name;
 					int data_length = 0;
@@ -198,7 +198,7 @@ LRESULT CALLBACK NetworkProc(HWND hwnd,	UINT uMsg, WPARAM wParam, LPARAM lParam)
 					}
 					delete [] buff;
 					buff = NULL;
-					::closesocket(s);
+					
 					break;
 				}
 			}
@@ -281,54 +281,50 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 		}
 	case MT_REQUEST_IP: //ip查询请求
 		{
-			cout<<"接收到IP查询请求:"<<endl;
+			cout<<"Inquiry ip address:"<<endl;
 			map<SOCKET, USER_INFO>::iterator it_user;
-			char temp_user_name[64]={0};
-			//获取查询ip用户名
-			strncpy_s(temp_user_name, recv_message->data(), recv_message->data_length);
-			USER_INFO respond_user;
-			strncpy_s(respond_user.user_name, temp_user_name, sizeof(respond_user.user_name));
-			cout<<"请求查询"<<temp_user_name<<"的ip信息"<<endl;
-			bool is_find = false;
+			string inquiry_name(recv_message->data());
+			if (inquiry_name == "群消息") {
+				cout <<"This is a group message, not a ip query." <<endl;
+				break;
+			}
+		    cout <<recv_message->user_name <<" request query " <<inquiry_name <<"'s ip address." <<endl;
+			
 			//根据用户名在map中找到该用户
 			for(it_user = users.begin(); it_user != users.end(); ++it_user)
 			{
-				if (string(respond_user.user_name) == it_user->second.user_name)
+				if (inquiry_name == it_user->second.user_name)
 				{
-					is_find = true;
 					break;
 				}
 			}
-			if (is_find == false)
+			if (it_user == users.end())
 			{
-				cout<<"没有查找到该用户"<<endl;
+				cout<<"Can not find this user."<<endl;
 				break;
 			}
-		    respond_user.addr = it_user->second.addr;//获取查询ip用户地址结构
-			//构造发送数据，响应客户端的ip查询请求
-			char buff[sizeof(MSG_INFO) + 128]={0};
+			USER_INFO queryed_user;
+			// 查询后的用户名
+			strncpy_s(queryed_user.user_name, inquiry_name.c_str(), inquiry_name.length());
+		    queryed_user.addr = it_user->second.addr;   //获取查询ip用户地址结构
+			// 构造发送数据，响应客户端的ip查询请求
+			char buff[sizeof(MSG_INFO) + sizeof(USER_INFO)];
+			memset(buff, 0, sizeof(buff));
 			pMsgInfo respond_msg = (pMsgInfo)buff;
 			respond_msg->type = MT_RESPOND_IP;
 			strncpy_s(respond_msg->user_name, "server", sizeof("server"));
 			respond_msg->data_length = sizeof(USER_INFO);
-			memcpy(respond_msg->data(), &respond_user, sizeof(USER_INFO));
-#ifdef _DEBUG
-			cout <<"USER INFO: " <<respond_msg->data() <<endl;
-#endif
+			memcpy(respond_msg->data(), &queryed_user, sizeof(USER_INFO));
 			int send_length = ::send(current_socket, buff, sizeof(MSG_INFO) + sizeof(USER_INFO), 0);
-			cout<<"给客户端发送ip查询结果的大小："<<send_length<<endl;
 			break;
 		}
-	case MT_REQUEST_ALLUSERINFO: //请求获取在线用户信息
+	case MT_REQUEST_ALLUSERINFO: // 请求获取在线用户信息
 		{
 			//TODO:基本与MT_CONNECT_USERINFO同
 			break; 
 		}
 	case MT_MULTICASTING_TEXT: //群聊消息
-		{
-#ifdef _DEBUG
-			cout <<"收到用户：" <<recv_message->user_name <<"发来的群聊消息" <<endl;
-#endif
+		{ 
 			map<SOCKET, USER_INFO>::iterator it_user;
 			//给每一个在线用户发送群聊信息
 			for (it_user = users.begin(); it_user != users.end(); ++it_user)
@@ -336,6 +332,11 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 				::send(it_user->first, (char *)recv_message, sizeof(MSG_INFO) + recv_message->data_length, 0);
 			}
 			break;
+		}
+	default:
+		{
+		  cout <<"Unknown message type." <<endl;
+		  break;
 		}
 		return true;
 	}

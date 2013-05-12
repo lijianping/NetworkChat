@@ -5,6 +5,7 @@
 #include "resource.h"
 #include <windows.h>
 #include <string>
+#include <list>
 #include <map>
 using namespace std;
 
@@ -14,5 +15,14 @@ using namespace std;
 
 BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 const string GetTime();
+
+/*
+ * @ brief: 打开文件
+ * @ param: in [in] 文件对象流
+ * @ param: file [in] 文件名称
+ * @ param: is_in [in] 打开方式，若为false则表示已写入形式打开（默认），否则为读入形式打开
+ * @ return: 文件对象流
+ **/
+fstream& open_file(fstream &in, const string &file, bool is_in = false);
 
 #endif

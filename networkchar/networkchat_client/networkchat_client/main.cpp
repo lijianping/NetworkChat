@@ -2,24 +2,18 @@
 #include "my_socket.h"
 #include "my_list_box.h"
 #include "chat.h"
-#include "save_msg.h"
-#include <io.h>
+
 #include <stdio.h>
+#include <fstream>
 #include <string>
 #include <map>
 using namespace std;
 
 MySocket *client;
-map<std::string, HWND> chat_windows;
-char current_user_name[64] = {0};
-/*
- * @ brief: 打开文件
- * @ param: in [in] 文件对象流
- * @ param: file [in] 文件名称
- * @ param: is_in [in] 打开方式，若为false则表示已写入形式打开（默认），否则为读入形式打开
- * @ return: 文件对象流
- **/
-fstream& open_file(fstream &in, const string &file, bool is_in = false);
+map<string, HWND> chat_windows;
+list<string> temp_file;        // 临时文件列表
+
+
 
 bool HandleMsg(HWND hwnd, MSG_INFO * msg);
 
@@ -50,7 +44,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				SendMessage(hwndDlg, WM_SETICON, ICON_SMALL, (LPARAM)main_icon);
 				SendMessage(hwndDlg, WM_SETICON, ICON_BIG, (LPARAM)main_icon);
 			}
-			//SendDlgItemMessage(hwndDlg, IDC_FRIEND_LIST, LB_ADDSTRING, 0, (LPARAM)"sele");
+			::EnableWindow(GetDlgItem(hwndDlg, IDC_DISCONNECT_SERVER), FALSE);  // 禁用断开连接
 			return TRUE;
 		}
 	case WM_COMMAND:
@@ -60,6 +54,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			case IDC_CONNECT_SERVER:
 				{
 					// get user name
+					char current_user_name[64];
 					memset(current_user_name, 0, sizeof(current_user_name));
 					if (0 == GetWindowText(GetDlgItem(hwndDlg, IDC_USER_NAME), current_user_name, sizeof(current_user_name))) 
 					{
@@ -71,26 +66,34 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					char server_ip[16];
 					memset(server_ip, 0, sizeof(server_ip));
 					GetWindowText(GetDlgItem(hwndDlg, IDC_SERVER_IP), server_ip, sizeof(server_ip));
-					const char invalid_ip[] = "0.0.0.0";
-					if (0 == strcmp(server_ip, invalid_ip)) 
+					const string invalid_ip("0.0.0.0");
+					if (invalid_ip == server_ip) 
 					{
 						MessageBox(hwndDlg, "Server ip address is invalid!", "HIT", MB_ICONINFORMATION | MB_OK);
 						return FALSE;
 					}
 					// connect to the server
 					try {
-						client->InitSocketLib();
 						client->ConnectSever(server_ip);
 						MessageBox(hwndDlg, "Connect server succeed!", "Hit", MB_ICONINFORMATION);
 						client->UserLogin();
-						//TODO:增加UDP接收线程
-
 					} catch (Err &err) {
-						MessageBox(hwndDlg, err.what(), "Error!", MB_ICONINFORMATION);
+						MessageBox(hwndDlg, err.what(), "Error At Connect", MB_ICONINFORMATION);
 						return FALSE;
 					}
 					// set the user name read only
 					SendMessage(GetDlgItem(hwndDlg, IDC_USER_NAME), EM_SETREADONLY, 1, 0);
+					::EnableWindow(GetDlgItem(hwndDlg, IDC_DISCONNECT_SERVER), TRUE);  // 启用断开连接
+					::EnableWindow(GetDlgItem(hwndDlg, IDC_CONNECT_SERVER), FALSE);    // 禁用连接
+					break;
+				}
+			case IDC_DISCONNECT_SERVER:          // 断开服务器
+				{
+					client->DisconnectServer();
+					::EnableWindow(GetDlgItem(hwndDlg, IDC_DISCONNECT_SERVER), FALSE);  // 禁用断开连接
+					::EnableWindow(GetDlgItem(hwndDlg, IDC_CONNECT_SERVER), TRUE);      // 启用连接
+					MyListBox friend_list(GetDlgItem(hwndDlg, IDC_FRIEND_LIST), IDC_FRIEND_LIST);
+					friend_list.DeleteAllString();
 					break;
 				}
 			case IDC_FRIEND_LIST:
@@ -113,9 +116,14 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 						{
 							// HIT: 在未加入判断时，不能正确将服务端响应的数据传送到聊天对话框中
 							//如果点击的用户是“群聊”,则不用发送查询Ip请求
-							if (string(buffer) == string("群消息"))
+							if (string(buffer) != string("群消息"))
 							{
-							   client->RequestUserIp(buffer, strlen(buffer));
+								try {
+									client->RequestUserIp(buffer, strlen(buffer));
+								} catch (Err &err) {
+									MessageBox(hwndDlg, err.what() , "Error", MB_ICONERROR);
+									break;
+								}
 							}
 							DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_CHAT), NULL, (DLGPROC)ChatDlgProc, (LPARAM)buffer);
 						}
@@ -141,8 +149,13 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			{
 				if (IDYES == MessageBox(hwndDlg, "是否退出聊天程序？", "网络聊天程序", MB_YESNO))
 				{
-					client->CloseSocket();
-					while (!client->IsThreadClosed()) {};
+					client->DisconnectServer();
+					list<string>::const_iterator file_index = temp_file.begin();
+					while (file_index != temp_file.end()) {
+						remove((*file_index).c_str());
+						temp_file.erase(file_index);
+						file_index = temp_file.begin();
+					}
 					EndDialog(hwndDlg, 0);
 				}
 			} 
@@ -154,8 +167,13 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					{
 						SendMessage((it++)->second, WM_CLOSE, 0, 0);
 					}
-					client->CloseSocket();     
-					while (!client->IsThreadClosed()) {};
+					client->DisconnectServer();
+					list<string>::const_iterator file_index = temp_file.begin();
+					while (file_index != temp_file.end()) {
+						remove((*file_index).c_str());
+						temp_file.erase(file_index);
+						file_index = temp_file.begin();
+					}
 					EndDialog(hwndDlg, 0);
 				}
 			}
@@ -228,10 +246,33 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 			map<string, HWND>::const_iterator it = chat_windows.find(user_name);
 			if (it == chat_windows.end()) 
 			{
-				return false;
+				MessageBox(hwnd, "can not find window hwnd", "Error", MB_ICONERROR);
 				break;
 			}
 			::SendMessage(it->second, WM_USER_IP, 0, (LPARAM)msg->data());
+			break;
+		}
+	case MT_SINGLE_TALK:   // 私聊信息
+		{
+			std::string file_name;
+			file_name +=  msg->user_name;
+			file_name += "--";
+			file_name += client->user_name();
+			//文本保存发消息的用户名和时间
+			std::string msg_user_text;
+			msg_user_text += msg->user_name;
+			msg_user_text += ' ';
+			msg_user_text += GetTime();
+			msg_user_text += '\n';
+			msg_user_text += msg->data();
+	//		MessageBox(NULL,msg->data(), TEXT("收到私聊消息_写入文本"), MB_OK);
+			//如果与发来此消息的用户的聊天窗口已打开，则发送到此窗口
+			map<string,HWND>::const_iterator it_user_window = chat_windows.find(msg->user_name);
+			if (it_user_window != chat_windows.end())
+			{
+				BringWindowToTop(it_user_window->second);
+				SendMessage(it_user_window->second, WM_SINGLE_TALK, 0, (LPARAM)msg);
+			}
 			break;
 		}
 	}
@@ -239,11 +280,3 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 }
 
 
-fstream& open_file(fstream &in, const string &file, bool is_in /* = false */) 
-{
-	in.close();
-	in.open(file.c_str(), ios::binary | ios::app | (is_in ? ios::out : ios::in));
-	if (!in.is_open())
-		LTHROW(ERR_FILE_OPEN_FAILD)
-	return in;
-}

@@ -30,9 +30,6 @@
     <ClInclude Include="my_list_box.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="save_msg.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="rich_edit.h">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -56,9 +53,6 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="my_list_box.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="save_msg.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="rich_edit.cpp">

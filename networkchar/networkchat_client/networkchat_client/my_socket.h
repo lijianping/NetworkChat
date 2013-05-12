@@ -14,6 +14,7 @@ const enum MSG_TYPE {
 
 	MT_MULTICASTING_TEXT,                 //多播聊天信息
 
+	MT_SINGLE_TALK,                     //私聊信息
 
 	MT_REQUEST_CONNECT,                   //连接请求
 	
@@ -24,6 +25,7 @@ const enum MSG_TYPE {
 	MT_CONNECT_USERINFO,                   //连接用户信息
 
 	MT_RESPOND_IP                         //响应Ip请求
+
 };
 // 64 bytes
 typedef struct MSG_INFO {
@@ -48,10 +50,10 @@ public:
 	~MySocket();
 	void InitSocketLib(BYTE minor_version = 2, BYTE major_version = 2);
 	void ConnectSever(const char *server_ip, const unsigned short port = 4567);
+	void DisconnectServer();
 	int Send(const char *message, const unsigned int len);
+	int SendTo(const char *message, const unsigned int len,sockaddr_in *remote_addr);
 	void CreateSocket(bool is_tcp = true);
-	bool IsThreadClosed();
-	void CloseSocket();
 	void RequestUserList();
 	void RequestUserIp(const char *user_name,  const int len);
 	bool SetTCPEvent();
@@ -66,7 +68,12 @@ protected:
 	void GetLocalAddress();
 	bool JoinGroup();
 	void CreateTCPReadThread();
+	void CreateUDPReadThread();
 	bool SetTimeOut(SOCKET sock, int time_out, bool is_receive = true);
+	bool IsThreadClosed();
+	bool IsUdpThreadClosed();
+	void CloseSocket();
+	void CloseUdpSocket();
 
 private:
 	in_addr local_ip_;
@@ -81,10 +88,13 @@ private:
 	HWND main_hwnd;               //
 	HANDLE thread_handle;         //线程句柄
 	HANDLE TCP_thread_;
+	HANDLE UDP_thread_;
 	HANDLE TCP_event_;
 	bool close_tcp_socket_;
+	bool close_udp_socket_;
 	bool tcp_thread_exit_;
 	bool is_create_tcp_thread_;
+	bool udp_thread_exit_;
 	friend DWORD __stdcall _Recvfrom(LPVOID lpParam);
 	friend DWORD __stdcall _Recv(LPVOID lpParam);
 	bool DispatchMsg(char* recv_buffer, SOCKET current_socket);
