@@ -325,7 +325,7 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 			break; 
 		}
 	case MT_MULTICASTING_TEXT: //群聊消息
-		{
+		{ 
 #ifdef _DEBUG
 			cout <<"收到用户：" <<recv_message->user_name <<"发来的群聊消息" <<endl;
 #endif

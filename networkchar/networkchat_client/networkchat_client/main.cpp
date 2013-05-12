@@ -190,7 +190,7 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 			if (it_group == chat_windows.end())
 			{
 				std::string file_name;
-				file_name += msg->user_name;
+				file_name +=  "群聊";
 				file_name += "--";
 				file_name += current_user_name;
 				//保存发消息的用户名和时间
@@ -198,11 +198,11 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 				user_name_time += msg->user_name;
 				user_name_time += ' ';
 				user_name_time += GetTime();
-				SaveMsg save_msg(file_name.c_str());
-				save_msg.SaveMsgText(user_name_time.c_str());
-				
-				//TODO:保存消息
-				MessageBox(NULL,msg->data(), TEXT("收到群聊消息_xieruwenben"), MB_OK);
+				SaveMsg save_user(file_name.c_str());
+				save_user.SaveMsgText(user_name_time.c_str());
+				SaveMsg save_text(file_name.c_str());
+				save_text.SaveMsgText(msg->data());
+				MessageBox(NULL,msg->data(), TEXT("收到群聊消息_写入文本"), MB_OK);
 			}
 			else
 			{

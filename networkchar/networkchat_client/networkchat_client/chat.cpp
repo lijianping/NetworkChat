@@ -97,8 +97,7 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 		{
 			char name[64];
 			memset(name, 0, sizeof(name));
-			GetWindowText(hChatDlg, name, sizeof(name));
-			chat_windows.erase(name);
+			chat_windows.erase(remote_user.user_name);
 			EndDialog(hChatDlg, 0);
 			return TRUE;
 		}
