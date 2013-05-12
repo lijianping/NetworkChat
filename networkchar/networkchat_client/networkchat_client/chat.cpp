@@ -51,11 +51,11 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 						send_msg->type = MT_SINGLE_TALK;
 						char szRemote[64];
 						sprintf(szRemote,"ip:%s,port:%d", inet_ntoa(remote_user.addr.sin_addr),ntohs(remote_user.addr.sin_port));
-						MessageBox(hChatDlg, szRemote, "远端地址",0);
+					//	MessageBox(hChatDlg, szRemote, "远端地址",0);
 						int send_len = client->SendTo(send_buff, sizeof(MSG_INFO)+strlen(send_text), &remote_user.addr);
 						char temp[32];
 						sprintf(temp, "send length: %d", send_len);
-						MessageBox(hChatDlg, temp, TEXT("发送"),0);
+				//		MessageBox(hChatDlg, temp, TEXT("发送"),0);
 					}
 					break;
 				}
@@ -115,7 +115,7 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 		}
 	case WM_SINGLE_TALK:
 		{
-			MessageBox(hChatDlg, "收到私聊消息", "私聊", 0);
+	//		MessageBox(hChatDlg, "收到私聊消息", "私聊", 0);
 			//显示发消息的用户名和时间
 			pMsgInfo single_talk_msg = (pMsgInfo)lParam;
 			std::string user_name_time;

@@ -200,7 +200,7 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 			save_user.SaveMsgText(user_name_time.c_str());
 			SaveMsg save_text(file_name.c_str());
 			save_text.SaveMsgText(msg->data());
-			MessageBox(NULL,msg->data(), TEXT("收到群聊消息_写入文本"), MB_OK);
+		//	MessageBox(NULL,msg->data(), TEXT("收到群聊消息_写入文本"), MB_OK);
 			//如果群聊窗口已打开，则发送到此窗口
 			map<string,HWND>::const_iterator it_group = chat_windows.find("群聊");
 			if (it_group != chat_windows.end())
@@ -238,7 +238,7 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 			msg_user_text += msg->data();
 			SaveMsg save_user(file_name.c_str());
 			save_user.SaveMsgText(msg_user_text.c_str());
-			MessageBox(NULL,msg->data(), TEXT("收到私聊消息_写入文本"), MB_OK);
+	//		MessageBox(NULL,msg->data(), TEXT("收到私聊消息_写入文本"), MB_OK);
 			//如果与发来此消息的用户的聊天窗口已打开，则发送到此窗口
 			map<string,HWND>::const_iterator it_user_window = chat_windows.find(msg->user_name);
 			if (it_user_window != chat_windows.end())
