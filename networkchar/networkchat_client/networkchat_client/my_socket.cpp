@@ -1,5 +1,5 @@
 #include "my_socket.h"
-
+#include "resource.h"
 
 MySocket::MySocket()
 	: is_init_lib_(false),
@@ -46,7 +46,6 @@ void MySocket::ConnectSever(const char *server_ip, const unsigned short port /* 
 	if (-1 == ::connect(communicate_, (sockaddr *)&server_addr_, sizeof(server_addr_)))
 		LTHROW(ERR_CONNECT)
 	CreateTCPReadThread();
-	BindUDP();
 	CreateUDPReadThread();
 	is_create_tcp_thread_ = true;
 }
@@ -101,9 +100,9 @@ bool MySocket::IsThreadClosed() {
 	return udp_thread_exit_ && tcp_thread_exit_;
 }
 
-bool MySocket::IsUdpThreadClosed()
+bool MySocket::IsTCPThreadClosed()
 {
-	return udp_thread_exit_;
+	return tcp_thread_exit_;
 }
 
 int MySocket::Send(const char *message, const unsigned int len) 
@@ -250,6 +249,7 @@ void MySocket::CreateTCPReadThread()
  **/
 void MySocket::CreateUDPReadThread()
 {
+	BindUDP();
 	UDP_thread_ = ::CreateThread(NULL, 0, _Recvfrom, this, 0, NULL);
 }
 

@@ -225,16 +225,10 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 			cout <<"Current Connect User: " <<recv_message->user_name \
 				 <<" length: " << strlen(recv_message->user_name)<<endl;
 #endif
-			// 增加用户名
-			strncpy_s(users[current_socket].user_name, \
-				      recv_message->user_name, \
-					  sizeof(recv_message->user_name));
-			sockaddr_in *remote = (sockaddr_in *)recv_message->data();
 			// 判断用户是否存在
 			map<SOCKET, USER_INFO>::const_iterator user_it = users.begin();
 			while (user_it != users.end()) {
-				if (user_it->first != current_socket &&
-					user_it->second.user_name == string(recv_message->user_name)) {
+				if (user_it->second.user_name == string(recv_message->user_name)) {
 					break;
 				}
 				++user_it;
@@ -255,6 +249,11 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 				users.erase(current_socket);
 				break;
 			}
+			// 增加用户名
+			strncpy_s(users[current_socket].user_name, \
+				      recv_message->user_name, \
+					  sizeof(recv_message->user_name));
+			sockaddr_in *remote = (sockaddr_in *)recv_message->data();
 			users[current_socket].addr.sin_port = remote->sin_port;       // 获取用户UDP绑定的端口
 			cout <<endl;
 			cout <<users[current_socket].user_name <<" sign in at " <<GetTime() <<endl;

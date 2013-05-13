@@ -12,7 +12,7 @@ using namespace std;
 MySocket *client;
 map<string, HWND> chat_windows;
 list<string> temp_file;        // 临时文件列表
-
+bool is_user_exsit = false;
 
 
 bool HandleMsg(HWND hwnd, MSG_INFO * msg);
@@ -32,6 +32,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 {
 	static HINSTANCE hInstance;
+	
 	switch (uMsg) 
 	{
 	case WM_INITDIALOG:
@@ -47,8 +48,21 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			::EnableWindow(GetDlgItem(hwndDlg, IDC_DISCONNECT_SERVER), FALSE);  // 禁用断开连接
 			return TRUE;
 		}
+	case WM_MOUSEMOVE:
+		{
+			if (is_user_exsit) {
+				client->DisconnectServer();
+				::EnableWindow(GetDlgItem(hwndDlg, IDC_DISCONNECT_SERVER), FALSE);  // 禁用断开连接
+				::EnableWindow(GetDlgItem(hwndDlg, IDC_CONNECT_SERVER), TRUE);      // 启用连接
+				::SendMessage(GetDlgItem(hwndDlg, IDC_USER_NAME), EM_SETREADONLY, 0, 0);
+				MessageBox(hwndDlg, "用户名已存在！\n请更换用户名！", "网络聊天程序", MB_ICONINFORMATION | MB_OK);
+				is_user_exsit = false;
+			}
+			return TRUE;
+		}
 	case WM_COMMAND:
 		{
+			
 			switch (LOWORD(wParam)) 
 			{
 			case IDC_CONNECT_SERVER:
@@ -59,6 +73,11 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					if (0 == GetWindowText(GetDlgItem(hwndDlg, IDC_USER_NAME), current_user_name, sizeof(current_user_name))) 
 					{
 						MessageBox(hwndDlg, "User Name can not be empty!", "HIT", MB_ICONINFORMATION | MB_OK);
+						return FALSE;
+					}
+					string name(current_user_name);
+					if (string::npos != name.find('/')) {
+						MessageBox(hwndDlg, "User Name can not include '/' character!", "HIT", MB_ICONINFORMATION | MB_OK);
 						return FALSE;
 					}
 					client->set_user_name(current_user_name);
@@ -75,7 +94,6 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					// connect to the server
 					try {
 						client->ConnectSever(server_ip);
-					//	MessageBox(hwndDlg, "Connect server succeed!", "Hit", MB_ICONINFORMATION);
 						client->UserLogin();
 					} catch (Err &err) {
 						MessageBox(hwndDlg, err.what(), "Error At Connect", MB_ICONINFORMATION);
@@ -198,12 +216,7 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 		{
 			string users(msg->data());
 			if (users == "/") {
-	//			::SendMessage(hwnd, WM_COMMAND, IDC_DISCONNECT_SERVER, 0);
-				client->DisconnectServer();
-				::EnableWindow(GetDlgItem(hwnd, IDC_DISCONNECT_SERVER), FALSE);  // 禁用断开连接
-				::EnableWindow(GetDlgItem(hwnd, IDC_CONNECT_SERVER), TRUE);      // 启用连接
-				MessageBox(hwnd, "用户名已存在！\n请更换用户名！", "网络聊天程序", MB_ICONINFORMATION | MB_OK);
-				::SendMessage(GetDlgItem(hwnd, IDC_USER_NAME), EM_SETREADONLY, 0, 0);
+				is_user_exsit = true;
 				break;
 			}
 			MyListBox list_box(GetDlgItem(hwnd, IDC_FRIEND_LIST), IDC_FRIEND_LIST);
@@ -240,7 +253,8 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 					MessageBox(hwnd, err.what(), "Error", MB_ICONERROR | MB_OK);
 					break;
 				}
-				out <<msg->data() <<endl;
+				string group_msg(msg->data(), msg->data_length - 1);
+				out <<group_msg <<endl;
 				out.close();
 				MessageBox(hwnd, "New message from group", "New Message", MB_OK | MB_ICONINFORMATION);
 			}
@@ -291,7 +305,6 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 				sprintf_s(temp, "New message from %s", msg->user_name);
 				MessageBox(hwnd, temp, "New Message", MB_ICONINFORMATION | MB_OK);
 			}
-			
 			break;
 		}
 	}

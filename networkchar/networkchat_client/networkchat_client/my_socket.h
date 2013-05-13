@@ -8,6 +8,7 @@
 #pragma comment(lib, "WS2_32")
 
 #define WM_CHATMSG (WM_USER+100)
+
 //消息类型
 const enum MSG_TYPE {
 	MT_MULTICASTING_USERINFO = 1,         //多播在线用户信息
@@ -62,6 +63,8 @@ public:
 	inline void set_user_name(const std::string &user_name);
 	inline void set_main_hwnd(HWND hwnd);
 	inline std::string& user_name();
+    bool IsTCPThreadClosed();
+	void CloseTCPThread();
 
 protected:
 	void BindUDP();
@@ -71,8 +74,6 @@ protected:
 	void CreateUDPReadThread();
 	bool SetTimeOut(SOCKET sock, int time_out, bool is_receive = true);
 	bool IsThreadClosed();
-	bool IsUdpThreadClosed();
-	void CloseTCPThread();
 	void CloseUDPThread();
 
 private:
