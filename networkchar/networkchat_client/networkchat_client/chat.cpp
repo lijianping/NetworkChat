@@ -22,6 +22,36 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 			chat_windows.insert(pair<string, HWND>((char *)lParam, hChatDlg));
 			// 设置消息显示rich edit控件需要回车
 			::SendMessage(GetDlgItem(hChatDlg, IDC_MESSAGE_RECORD), ES_WANTRETURN, 0, 0);
+			// 读取消息
+			string file_name = client->user_name();
+			file_name += "-";
+			file_name += (char *)lParam;
+			string file_name_not_show = file_name + ".notshow";
+			file_name += ".history";
+			list<string>::const_iterator find_it;
+			find_it = find(temp_file.begin(), temp_file.end(), file_name);
+			if (find_it == temp_file.end()) {
+				temp_file.insert(find_it, file_name);
+				--find_it;
+			}
+			fstream in, out;
+			try {
+				open_file(in, file_name_not_show);
+				open_file(out, *find_it);
+			} catch (Err &err) {
+				MessageBox(hChatDlg, err.what(), "Error At HandleMessage", MB_ICONERROR);
+				return FALSE;
+			}
+			RichEdit rich_edit(GetDlgItem(hChatDlg, IDC_MESSAGE_RECORD), IDC_MESSAGE_RECORD);
+			string chat_msg;
+			while (getline(in, chat_msg)) {
+				out <<chat_msg;
+				chat_msg += "\n";
+				rich_edit.AppendText(chat_msg);
+			}
+			out.close();
+			in.close();
+			remove(file_name_not_show.c_str());
 			return TRUE;
 		}
 	case WM_COMMAND:
@@ -43,8 +73,7 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 					user_send_time += GetTime();
 					user_send_time += "\n";  
 					string message(send_text);
-					message = user_send_time + message;
-					message += "\n";           
+					message = user_send_time + message;          
 				
 					char *send_data = new char[sizeof(MSG_INFO) + message.length()];
 					memset(send_data, 0, sizeof(MSG_INFO) + message.length());
@@ -87,7 +116,28 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 						rich_edit.AppendText(message);
 						SetDlgItemText(hChatDlg, IDC_SEND_TEXT, "");     // 清空发送消息对话框
 						// 保存消息记录
-
+						char chat_name[64];
+						memset(chat_name, 0, sizeof(chat_name));
+						GetWindowText(hChatDlg, chat_name, sizeof(chat_name));
+						string file_name = client->user_name();
+						file_name += "-";
+						file_name += chat_name;
+						file_name += ".history";         // 历史记录文件名 主用户-聊天用户.history 格式
+						list<string>::const_iterator find_it;
+						find_it = find(temp_file.begin(), temp_file.end(), file_name);
+						if (find_it == temp_file.end()) {
+							temp_file.insert(find_it, file_name);
+							--find_it;
+						}
+						fstream out;
+						try {
+							open_file(out, *find_it);
+						} catch (Err &err) {
+							MessageBox(hChatDlg, err.what(), "Error", MB_ICONERROR);
+							break;
+						}
+						out <<message;
+						out.close();
 					}
 					break;
 				}
@@ -120,12 +170,13 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 			pMsgInfo group_msg = (pMsgInfo)lParam;
 			RichEdit rich_edit(GetDlgItem(hChatDlg, IDC_MESSAGE_RECORD), IDC_MESSAGE_RECORD);
 			rich_edit.AppendText(group_msg->data());
-			string group_msg_file("groupmsg.history");
-			group_msg_file += client->user_name();
-			list<string>::const_iterator find_it = find(temp_file.begin(), temp_file.end(), group_msg_file);
+			string file_name = client->user_name();
+			file_name += "-";
+			file_name += "群消息.history";
+			list<string>::const_iterator find_it = find(temp_file.begin(), temp_file.end(), file_name);
 			if (find_it == temp_file.end()) {
-				temp_file.insert(find_it, group_msg_file);
-				--find_it;   // 使find指向group_msg_file
+				temp_file.insert(find_it, file_name);
+				--find_it;   // 使find指向file_name
 			}
 			// 保存消息记录
 			fstream out;
@@ -146,6 +197,30 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 			pMsgInfo single_talk_msg = (pMsgInfo)lParam;
 			RichEdit rich_edit(GetDlgItem(hChatDlg, IDC_MESSAGE_RECORD), IDC_MESSAGE_RECORD);
 			rich_edit.AppendText(single_talk_msg->data());
+
+			char chat_name[64];
+			memset(chat_name, 0, sizeof(chat_name));
+			GetWindowText(hChatDlg, chat_name, sizeof(chat_name));
+			string file_name = client->user_name();
+			file_name += "-";
+			file_name += chat_name;
+			file_name += ".history";         // 历史记录文件名 主用户-聊天用户.history 格式
+			list<string>::const_iterator find_it;
+			find_it = find(temp_file.begin(), temp_file.end(), file_name);
+			if (find_it == temp_file.end()) {
+				temp_file.insert(find_it, file_name);
+				--find_it;
+			}
+			fstream out;
+			try {
+				open_file(out, *find_it);
+			} catch (Err &err) {
+				MessageBox(hChatDlg, err.what(), "Error", MB_ICONERROR);
+				break;
+			}
+			out <<single_talk_msg->data();
+			out.close();
+
 			return TRUE;
 		}
 	case  WM_CLOSE:
@@ -192,8 +267,8 @@ const string GetTime()
 fstream& open_file(fstream &in, const string &file, bool is_in /* = false */) 
 {
 	in.close();
-	in.open(file.c_str(), ios::binary | ios::app | (is_in ? ios::out : ios::in));
+	in.open(file.c_str(), ios::binary | ios::app  | (is_in ? ios::out : ios::in));
 	if (!in.is_open())
 		LTHROW(ERR_FILE_OPEN_FAILD)
-		return in;
+	return in;
 }

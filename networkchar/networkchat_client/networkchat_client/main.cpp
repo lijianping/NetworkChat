@@ -206,6 +206,9 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 				int mid = users.find('/', start_pos);
 				string user_name = users.substr(start_pos, mid - start_pos);
 				start_pos = mid + 1;
+				if (user_name == client->user_name()) {
+					continue;
+				}
 				list_box.AddString(user_name.c_str());
 			}
 			break;
@@ -217,9 +220,9 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 			if (it_group == chat_windows.end())
 			{
 				std::string file_name;
-				file_name += msg->user_name;
-				file_name += ".";
-				file_name += "notshow";
+				file_name += client->user_name();
+				file_name += "-";
+				file_name += "群消息.notshow";
 				fstream out;
 				try {
 					open_file(out, file_name.c_str());
@@ -227,8 +230,8 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 					MessageBox(hwnd, err.what(), "Error", MB_ICONERROR | MB_OK);
 					break;
 				}
-			    out <<msg->user_name <<endl;
 				out <<msg->data() <<endl;
+				out.close();
 				//TODO:保存消息
 				MessageBox(hwnd, msg->data(), TEXT("收到群聊消息_xieruwenben"), MB_OK);
 			}
@@ -254,25 +257,29 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 		}
 	case MT_SINGLE_TALK:   // 私聊信息
 		{
-			std::string file_name;
-			file_name +=  msg->user_name;
-			file_name += "--";
-			file_name += client->user_name();
-			//文本保存发消息的用户名和时间
-			std::string msg_user_text;
-			msg_user_text += msg->user_name;
-			msg_user_text += ' ';
-			msg_user_text += GetTime();
-			msg_user_text += '\n';
-			msg_user_text += msg->data();
-	//		MessageBox(NULL,msg->data(), TEXT("收到私聊消息_写入文本"), MB_OK);
 			//如果与发来此消息的用户的聊天窗口已打开，则发送到此窗口
 			map<string,HWND>::const_iterator it_user_window = chat_windows.find(msg->user_name);
-			if (it_user_window != chat_windows.end())
-			{
+			if (it_user_window != chat_windows.end()) {
 				BringWindowToTop(it_user_window->second);
 				SendMessage(it_user_window->second, WM_SINGLE_TALK, 0, (LPARAM)msg);
+			} else {
+				MessageBox(hwnd, "New message", "Debug At HangleMsg", MB_ICONINFORMATION);
+				std::string file_name = client->user_name();
+				file_name += "-";
+				file_name +=  msg->user_name;
+				file_name += ".notshow";
+				fstream out;
+				try {
+					open_file(out, file_name);
+				} catch (Err &err) {
+					MessageBox(hwnd, err.what(), "Error At HandleMessage", MB_ICONERROR);
+					break;
+				}
+
+				out <<msg->data();
+				out.close();
 			}
+			
 			break;
 		}
 	}
