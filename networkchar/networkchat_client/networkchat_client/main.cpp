@@ -75,14 +75,14 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					// connect to the server
 					try {
 						client->ConnectSever(server_ip);
-						MessageBox(hwndDlg, "Connect server succeed!", "Hit", MB_ICONINFORMATION);
+					//	MessageBox(hwndDlg, "Connect server succeed!", "Hit", MB_ICONINFORMATION);
 						client->UserLogin();
 					} catch (Err &err) {
 						MessageBox(hwndDlg, err.what(), "Error At Connect", MB_ICONINFORMATION);
 						return FALSE;
 					}
 					// set the user name read only
-					SendMessage(GetDlgItem(hwndDlg, IDC_USER_NAME), EM_SETREADONLY, 1, 0);
+					::SendMessage(GetDlgItem(hwndDlg, IDC_USER_NAME), EM_SETREADONLY, 1, 0);
 					::EnableWindow(GetDlgItem(hwndDlg, IDC_DISCONNECT_SERVER), TRUE);  // 启用断开连接
 					::EnableWindow(GetDlgItem(hwndDlg, IDC_CONNECT_SERVER), FALSE);    // 禁用连接
 					break;
@@ -90,6 +90,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			case IDC_DISCONNECT_SERVER:          // 断开服务器
 				{
 					client->DisconnectServer();
+					::SendMessage(GetDlgItem(hwndDlg, IDC_USER_NAME), EM_SETREADONLY, 0, 0);
 					::EnableWindow(GetDlgItem(hwndDlg, IDC_DISCONNECT_SERVER), FALSE);  // 禁用断开连接
 					::EnableWindow(GetDlgItem(hwndDlg, IDC_CONNECT_SERVER), TRUE);      // 启用连接
 					MyListBox friend_list(GetDlgItem(hwndDlg, IDC_FRIEND_LIST), IDC_FRIEND_LIST);
@@ -149,7 +150,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			{
 				if (IDYES == MessageBox(hwndDlg, "是否退出聊天程序？", "网络聊天程序", MB_YESNO))
 				{
-					client->DisconnectServer();
+					::SendMessage(hwndDlg, WM_COMMAND, IDC_DISCONNECT_SERVER, 0);
 					list<string>::const_iterator file_index = temp_file.begin();
 					while (file_index != temp_file.end()) {
 						remove((*file_index).c_str());
@@ -167,7 +168,7 @@ INT_PTR CALLBACK MainProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					{
 						SendMessage((it++)->second, WM_CLOSE, 0, 0);
 					}
-					client->DisconnectServer();
+					::SendMessage(hwndDlg, WM_COMMAND, IDC_DISCONNECT_SERVER, 0);
 					list<string>::const_iterator file_index = temp_file.begin();
 					while (file_index != temp_file.end()) {
 						remove((*file_index).c_str());
@@ -196,6 +197,15 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 	case MT_MULTICASTING_USERINFO: //多播的在线用户信息
 		{
 			string users(msg->data());
+			if (users == "/") {
+	//			::SendMessage(hwnd, WM_COMMAND, IDC_DISCONNECT_SERVER, 0);
+				client->DisconnectServer();
+				::EnableWindow(GetDlgItem(hwnd, IDC_DISCONNECT_SERVER), FALSE);  // 禁用断开连接
+				::EnableWindow(GetDlgItem(hwnd, IDC_CONNECT_SERVER), TRUE);      // 启用连接
+				MessageBox(hwnd, "用户名已存在！\n请更换用户名！", "网络聊天程序", MB_ICONINFORMATION | MB_OK);
+				::SendMessage(GetDlgItem(hwnd, IDC_USER_NAME), EM_SETREADONLY, 0, 0);
+				break;
+			}
 			MyListBox list_box(GetDlgItem(hwnd, IDC_FRIEND_LIST), IDC_FRIEND_LIST);
 			list_box.DeleteAllString();
 			//默认添加一个“群聊”成员
@@ -232,8 +242,7 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 				}
 				out <<msg->data() <<endl;
 				out.close();
-				//TODO:保存消息
-				MessageBox(hwnd, msg->data(), TEXT("收到群聊消息_xieruwenben"), MB_OK);
+				MessageBox(hwnd, "New message from group", "New Message", MB_OK | MB_ICONINFORMATION);
 			}
 			else
 			{
@@ -263,7 +272,6 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 				BringWindowToTop(it_user_window->second);
 				SendMessage(it_user_window->second, WM_SINGLE_TALK, 0, (LPARAM)msg);
 			} else {
-				MessageBox(hwnd, "New message", "Debug At HangleMsg", MB_ICONINFORMATION);
 				std::string file_name = client->user_name();
 				file_name += "-";
 				file_name +=  msg->user_name;
@@ -275,9 +283,13 @@ bool HandleMsg(HWND hwnd, MSG_INFO * msg)
 					MessageBox(hwnd, err.what(), "Error At HandleMessage", MB_ICONERROR);
 					break;
 				}
-
 				out <<msg->data();
 				out.close();
+				// 提示用户新消息到了
+				char temp[128]; 
+				memset(temp, 0, sizeof(temp));
+				sprintf_s(temp, "New message from %s", msg->user_name);
+				MessageBox(hwnd, temp, "New Message", MB_ICONINFORMATION | MB_OK);
 			}
 			
 			break;

@@ -72,10 +72,14 @@ protected:
 	bool SetTimeOut(SOCKET sock, int time_out, bool is_receive = true);
 	bool IsThreadClosed();
 	bool IsUdpThreadClosed();
-	void CloseSocket();
-	void CloseUdpSocket();
+	void CloseTCPThread();
+	void CloseUDPThread();
 
 private:
+	friend DWORD __stdcall _Recvfrom(LPVOID lpParam);
+	friend DWORD __stdcall _Recv(LPVOID lpParam);
+	bool DispatchMsg(char* recv_buffer, SOCKET current_socket);
+
 	in_addr local_ip_;
 	sockaddr_in server_addr_;
 	SOCKET communicate_;          // 通信套接字
@@ -90,14 +94,11 @@ private:
 	HANDLE TCP_thread_;
 	HANDLE UDP_thread_;
 	HANDLE TCP_event_;
-	bool close_tcp_socket_;
-	bool close_udp_socket_;
-	bool tcp_thread_exit_;
+	volatile bool close_tcp_thread_;       // 关闭TCP线程标志
+	volatile bool close_udp_thread_;       // 关闭UDP线程标志
+	bool tcp_thread_exit_;        // TCP线程是否退出，若为true，则表示退出或未创建
+	bool udp_thread_exit_;        // UDP线程是否退出，若为true，则表示退出或未创建
 	bool is_create_tcp_thread_;
-	bool udp_thread_exit_;
-	friend DWORD __stdcall _Recvfrom(LPVOID lpParam);
-	friend DWORD __stdcall _Recv(LPVOID lpParam);
-	bool DispatchMsg(char* recv_buffer, SOCKET current_socket);
 };
 
 SOCKET MySocket::communicate() const

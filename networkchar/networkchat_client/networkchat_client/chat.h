@@ -14,6 +14,11 @@ using namespace std;
 #define WM_SINGLE_TALK (WM_USER + 103)
 
 BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+/*
+ * @ brief: 获取当前系统时间
+ * @ return: YYYY-MM-DD hh:mm:ss 格式时间字符串
+ **/
 const string GetTime();
 
 /*

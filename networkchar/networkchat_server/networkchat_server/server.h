@@ -9,11 +9,11 @@
 using namespace std;
 
 //用户信息结构体（用户名做map的key值，用户信息做value）
-struct USER_INFO
+typedef struct USER_INFO
 {
 	char user_name[48];
 	sockaddr_in addr;        // 该结构用于存放用户ip地址以及udp协议绑定的端口号
-}*pUSER_INFO;
+}*pUserInfo;
 
 //消息类型
 const enum MSG_TYPE {

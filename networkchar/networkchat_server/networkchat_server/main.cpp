@@ -221,20 +221,44 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 	{
 	case MT_CONNECT_USERINFO://连接用户信息
 		{
+#ifdef _DEBUG
+			cout <<"Current Connect User: " <<recv_message->user_name \
+				 <<" length: " << strlen(recv_message->user_name)<<endl;
+#endif
 			// 增加用户名
 			strncpy_s(users[current_socket].user_name, \
 				      recv_message->user_name, \
 					  sizeof(recv_message->user_name));
 			sockaddr_in *remote = (sockaddr_in *)recv_message->data();
+			// 判断用户是否存在
+			map<SOCKET, USER_INFO>::const_iterator user_it = users.begin();
+			while (user_it != users.end()) {
+				if (user_it->first != current_socket &&
+					user_it->second.user_name == string(recv_message->user_name)) {
+					break;
+				}
+				++user_it;
+			}
+			if (user_it != users.end()) {       // 用户存在，通知客户端更换用户名
+				cout <<recv_message->user_name <<" is exist." <<endl;
+				cout <<"Notify the client change the user name." <<endl;
+				char *send_buffer = new char[sizeof(MSG_INFO) + 2];
+				memset(send_buffer, 0, sizeof(send_buffer));
+				pMsgInfo send_msg = (pMsgInfo)send_buffer;
+				send_msg->type = MT_MULTICASTING_USERINFO;         // 此处实质上只会发送给登录的用户
+				strncpy_s(send_msg->user_name, "server", sizeof("server"));
+				send_msg->data_length = 2;
+				strncpy(send_msg->data(), "/", sizeof("/"));
+				::send(current_socket, send_buffer, sizeof(MSG_INFO) + 2, 0);
+				delete [] send_buffer;
+				send_buffer = NULL;
+				users.erase(current_socket);
+				break;
+			}
 			users[current_socket].addr.sin_port = remote->sin_port;       // 获取用户UDP绑定的端口
-			
-#ifdef _DEBUG
-			cout <<"Current Connect User: " <<recv_message->user_name \
-				 <<" length: " << strlen(recv_message->user_name)<<endl;
-			cout <<"UDP addr: " <<inet_ntoa(users[current_socket].addr.sin_addr) <<" UDP port: " <<::ntohs(remote->sin_port) <<endl;
-#endif
 			cout <<endl;
 			cout <<users[current_socket].user_name <<" sign in at " <<GetTime() <<endl;
+			cout <<"UDP addr: " <<inet_ntoa(users[current_socket].addr.sin_addr) <<" UDP port: " <<::ntohs(remote->sin_port) <<endl;
 			map<SOCKET, USER_INFO>::const_iterator it;
 			std::string user_name;
 			int data_length = 0;
@@ -276,7 +300,6 @@ bool HandleMessage(char* recv_buffer, SOCKET current_socket)
 			si.sin_addr.S_un.S_addr =::inet_addr("234.5.6.7");  
 			sendto(s, buff, sizeof(MSG_INFO) + data_length, 0, (sockaddr *)&si, sizeof(si));
 			*/
-			
 			break;
 		}
 	case MT_REQUEST_IP: //ip查询请求

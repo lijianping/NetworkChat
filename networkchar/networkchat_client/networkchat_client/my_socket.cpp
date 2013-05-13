@@ -4,15 +4,11 @@
 MySocket::MySocket()
 	: is_init_lib_(false),
 	  communicate_(INVALID_SOCKET),
-	  close_tcp_socket_(false),
-	  close_udp_socket_(false),
+	  close_tcp_thread_(false),
+	  close_udp_thread_(false),
 	  tcp_thread_exit_(true),
 	  udp_thread_exit_(true)
 {
-	
-//	multi_addr_=inet_addr("234.5.6.7");
-	
-	//thread_handle = ::CreateThread(NULL, 0, _Recvfrom, this, 0, NULL);
 }
 
 
@@ -22,8 +18,6 @@ MySocket::~MySocket()
 	{
 		::WSACleanup();
 	}
-	::CloseHandle(TCP_thread_);
-	::CloseHandle(UDP_thread_);
 }
 
 void MySocket::InitSocketLib(BYTE minor_version /* = 2 */, BYTE major_version /* = 2 */)
@@ -53,6 +47,7 @@ void MySocket::ConnectSever(const char *server_ip, const unsigned short port /* 
 		LTHROW(ERR_CONNECT)
 	CreateTCPReadThread();
 	BindUDP();
+	CreateUDPReadThread();
 	is_create_tcp_thread_ = true;
 }
 
@@ -61,13 +56,13 @@ void MySocket::ConnectSever(const char *server_ip, const unsigned short port /* 
  **/
 void MySocket::DisconnectServer()
 {
-	CloseSocket();
-	CloseUdpSocket();
+	CloseTCPThread();
+	CloseUDPThread();
 	while (!IsThreadClosed()) {}
 	::CloseHandle(TCP_thread_);
 	::CloseHandle(UDP_thread_);
-	close_tcp_socket_ = false;
-	close_udp_socket_ = false;
+	close_tcp_thread_ = false;
+	close_udp_thread_ = false;
 }
 
 /*
@@ -88,18 +83,18 @@ void MySocket::CreateSocket(bool is_tcp /* = true */)
 	}
 }
 
-void MySocket::CloseSocket()
+void MySocket::CloseTCPThread()
 {
-	close_tcp_socket_ = true;
+	close_tcp_thread_ = true;
 }
 
-void MySocket::CloseUdpSocket()
+void MySocket::CloseUDPThread()
 {
-	close_udp_socket_ = true;
+	close_udp_thread_ = true;
 }
 
 /*
- * @ brief: 是否所有线程已正常退出
+ * @ brief: 是否所有线程已正常关闭
  * @ return: 若是返回true
  **/
 bool MySocket::IsThreadClosed() {
@@ -159,9 +154,11 @@ void MySocket::RequestUserIp(const char *user_name, const int len)
 	if (SOCKET_ERROR == Send(buff, sizeof(MSG_INFO) + len))
 	{
 		delete [] buff;
+		buff = NULL;
 		LTHROW(ERR_SEND_TCP_DATA)
 	}
 	delete [] buff;
+	buff = NULL;
 }
 
 /*
@@ -210,7 +207,6 @@ void MySocket::BindUDP()
 		LTHROW(ERR_BIND_FAILED)
 	int len = sizeof(udp_addr_);
 	getsockname(read_udp_, (sockaddr *)&udp_addr_, &len);
-	CreateUDPReadThread();
 }
 
 void MySocket::GetLocalAddress()
@@ -249,6 +245,9 @@ void MySocket::CreateTCPReadThread()
 	TCP_thread_ = ::CreateThread(NULL, 0, _Recv, this, 0, NULL);
 }
 
+/*
+ * @ brief: 创建UDP数据接收线程
+ **/
 void MySocket::CreateUDPReadThread()
 {
 	UDP_thread_ = ::CreateThread(NULL, 0, _Recvfrom, this, 0, NULL);
@@ -275,7 +274,7 @@ DWORD __stdcall _Recvfrom(LPVOID lpParam)
 	char buff[4096];
 	sockaddr_in remote_addr;
 	int remote_length = sizeof(remote_addr);
-	while (!my_socket->close_udp_socket_)
+	while (!my_socket->close_udp_thread_)
 	{
 		memset(buff, 0, sizeof(buff));
 		int ret_len = ::recvfrom(my_socket->read_udp_, buff, sizeof(buff), 0, (sockaddr *)&remote_addr, &remote_length );
@@ -306,8 +305,7 @@ DWORD __stdcall _Recv(LPVOID lpParam)
 	::setsockopt(my_socket->communicate_, SOL_SOCKET, SO_REUSEADDR, (char*)&bReuse, sizeof(BOOL));
     my_socket->SetTimeOut(my_socket->communicate_, 1000);
 	char buff[4096];
-	
-	while (!my_socket->close_tcp_socket_)
+	while (!my_socket->close_tcp_thread_)
 	{
 		memset(buff, 0, sizeof(buff));
 		int ret_len = ::recv(my_socket->communicate_, buff, sizeof(buff), 0);
@@ -335,6 +333,7 @@ bool MySocket::DispatchMsg(char* recv_buffer, SOCKET current_socket)
 			MessageBox(NULL, recv_message->data(), TEXT("收到信息"),0);
 			SendMessage(main_hwnd, WM_CHATMSG, 0, (LPARAM)recv_buffer);
 		    delete [] user_name;
+			user_name = NULL;
 			break;
 		}
 	case MT_MULTICASTING_TEXT: //多播的聊天信息

@@ -13,6 +13,8 @@ extern list<string> temp_file;
 BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	static USER_INFO remote_user;
+	static int chat_width, history_width;     // 聊天时的窗口宽度及查看历史记录时的聊天宽度
+	static int is_show_history;
 	switch(uMsg)
 	{
 	case WM_INITDIALOG:
@@ -45,13 +47,26 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 			RichEdit rich_edit(GetDlgItem(hChatDlg, IDC_MESSAGE_RECORD), IDC_MESSAGE_RECORD);
 			string chat_msg;
 			while (getline(in, chat_msg)) {
-				out <<chat_msg;
 				chat_msg += "\n";
+				out <<chat_msg;
 				rich_edit.AppendText(chat_msg);
 			}
 			out.close();
 			in.close();
 			remove(file_name_not_show.c_str());
+
+			RECT chat_rect, rect;
+			GetWindowRect(hChatDlg, &chat_rect);
+			GetWindowRect(GetDlgItem(hChatDlg, IDC_MESSAGE_RECORD), &rect);
+#ifdef MyDebug
+			char temp[64];
+			sprintf_s(temp, "left: %d, top: %d, right: %d, bottom: %d", chat_rect.left, chat_rect.top, chat_rect.right, chat_rect.bottom);
+			MessageBox(hChatDlg, temp, "Debug", MB_ICONINFORMATION);
+#endif
+			history_width = chat_rect.right - chat_rect.left;
+			chat_width = rect.right - rect.left + 30;
+			MoveWindow(hChatDlg, chat_rect.left, chat_rect.top, chat_width, chat_rect.bottom - chat_rect.top, TRUE);
+			is_show_history = 0;
 			return TRUE;
 		}
 	case WM_COMMAND:
@@ -74,7 +89,7 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 					user_send_time += "\n";  
 					string message(send_text);
 					message = user_send_time + message;          
-				
+				    message += "\n";
 					char *send_data = new char[sizeof(MSG_INFO) + message.length()];
 					memset(send_data, 0, sizeof(MSG_INFO) + message.length());
 					pMsgInfo send_msg = (pMsgInfo)send_data;
@@ -99,11 +114,13 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 					else
 					{
 						send_msg->type = MT_SINGLE_TALK;
+#ifdef MyDebug
 						char temp[256];
 						memset(temp, 0, sizeof(256));
 						sprintf_s(temp, "user name: %s ip address: %s port: %d", remote_user.user_name, \
 							      inet_ntoa(remote_user.addr.sin_addr), ntohs(remote_user.addr.sin_port));
 						MessageBox(hChatDlg, temp, "Debug", MB_ICONINFORMATION);
+#endif
 						try {
 							client->SendTo(send_data, sizeof(MSG_INFO) + message.length(), &remote_user.addr);
 						} catch (Err &err) {
@@ -141,6 +158,40 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 					}
 					break;
 				}
+			case IDC_SHOW_HISTORY:
+				{
+					RECT chat_rect;
+					GetWindowRect(hChatDlg, &chat_rect);
+					is_show_history++;
+					if (is_show_history % 2) {        // 查看历史记录
+						MoveWindow(hChatDlg, chat_rect.left, chat_rect.top, history_width, chat_rect.bottom - chat_rect.top, TRUE);
+						
+						string file_name = client->user_name();
+						file_name += "-";
+						char title[32] = {0};
+						GetWindowText(hChatDlg, title, sizeof(title));
+						file_name += title;
+						file_name += ".history";
+						fstream in;
+						try {
+							open_file(in, file_name);
+						} catch (Err &err) {
+							MessageBox(hChatDlg, err.what(), "Error", MB_ICONERROR);
+							break;
+						}
+						RichEdit history(GetDlgItem(hChatDlg, IDC_MESSAGE_HISTORY), IDC_MESSAGE_HISTORY);
+						string chat_msg;
+						while (getline(in, chat_msg)) {
+							chat_msg += "\n";
+							history.AppendText(chat_msg);
+						}
+						in.close();
+					} else {
+						MoveWindow(hChatDlg, chat_rect.left, chat_rect.top, chat_width, chat_rect.bottom - chat_rect.top, TRUE);
+						SetDlgItemText(hChatDlg, IDC_MESSAGE_HISTORY, "");
+					}
+					break;
+				}
 			case IDC_CLOSE_CHAT:
 				{
 					SendMessage(hChatDlg, WM_CLOSE, 0, 0);
@@ -157,11 +208,13 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 			remote_user.addr.sin_family = AF_INET;
 			remote_user.addr.sin_port = recv_user->addr.sin_port;
 			remote_user.addr.sin_addr = recv_user->addr.sin_addr;
+#ifdef MyDebug		
 			char temp[256];
 			memset(temp, 0, sizeof(256));
 			sprintf_s(temp, "user name: %s ip address: %s port: %d", recv_user->user_name, \
 				      inet_ntoa(recv_user->addr.sin_addr), ntohs(recv_user->addr.sin_port));
 			MessageBox(hChatDlg, temp, "Debug", MB_ICONINFORMATION);
+#endif
 			return TRUE;
 		}
 	case WM_GROUP_TALK:
@@ -192,7 +245,6 @@ BOOL CALLBACK ChatDlgProc(HWND hChatDlg, UINT uMsg, WPARAM wParam, LPARAM lParam
 		}
 	case WM_SINGLE_TALK:
 		{
-	//		MessageBox(hChatDlg, "收到私聊消息", "私聊", 0);
 			//显示发消息的用户名和时间
 			pMsgInfo single_talk_msg = (pMsgInfo)lParam;
 			RichEdit rich_edit(GetDlgItem(hChatDlg, IDC_MESSAGE_RECORD), IDC_MESSAGE_RECORD);
